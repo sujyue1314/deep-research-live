@@ -1241,3 +1241,101 @@ body {
     grid-template-columns: 280px minmax(0, 1fr) 340px;
   }
 }
+
+/* ---------- 证据↔报告双向联动（iter-2） ---------- */
+
+.md-cite.hl {
+  border: 1.5px solid var(--clay-deep);
+  background: var(--clay-soft);
+  font-weight: 700;
+}
+
+.ev-card {
+  cursor: pointer;
+  transition: outline-offset 0.15s ease;
+}
+
+.ev-card.ev-active {
+  outline: 2px solid var(--clay-deep);
+  outline-offset: 2px;
+}
+
+.rb-print-btn {
+  margin-left: auto;
+  font-size: 10px;
+  letter-spacing: 2.5px;
+  font-weight: 700;
+  color: var(--clay-deep);
+  background: none;
+  border: 1px solid var(--clay);
+  border-radius: 2px;
+  padding: 2px 12px;
+  cursor: pointer;
+}
+
+.rb-print-btn:hover {
+  background: var(--clay-soft);
+  border-color: var(--clay-deep);
+}
+
+/* ---------- 打印文档化：只留报告 + 证据参考表 ---------- */
+
+@media print {
+  @page {
+    margin: 1.8cm 2cm;
+  }
+  html,
+  body {
+    background: #fff !important;
+    height: auto;
+    overflow: visible;
+  }
+  .rb-header,
+  .rb-inputbar,
+  .rb-col-left {
+    display: none !important;
+  }
+  .rb-screen {
+    height: auto;
+  }
+  .rb-grid {
+    display: flex;
+    flex-direction: column;
+  }
+  .rb-col {
+    display: block;
+    padding: 0;
+    border: none;
+    overflow: visible;
+  }
+  /* 右栏报告在前，中栏证据板作参考表随后 */
+  .rb-col-right {
+    order: 1;
+  }
+  .rb-col-center {
+    order: 2;
+  }
+  .rb-col-right .rb-panel:not(.rb-report) {
+    display: none !important;
+  }
+  .rb-panel {
+    overflow: visible !important;
+  }
+  .rb-report-body,
+  .rb-board-body {
+    overflow: visible !important;
+    height: auto !important;
+  }
+  .rb-print-btn,
+  .rb-panel-hint {
+    display: none !important;
+  }
+  .rp-section,
+  .ev-card {
+    break-inside: avoid;
+  }
+  .ev-card {
+    border: 1px solid var(--line);
+    box-shadow: none;
+  }
+}

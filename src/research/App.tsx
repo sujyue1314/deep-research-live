@@ -95,6 +95,7 @@ export default function App() {
   const [stats, setStats] = useState({ steps: 0, searches: 0, pages: 0 });
   const [elapsed, setElapsed] = useState(0);
   const [highlightEv, setHighlightEv] = useState<number | null>(null);
+  const [citeFocus, setCiteFocus] = useState<number | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
   const stepRef = useRef(0);
@@ -333,6 +334,7 @@ export default function App() {
     setStats({ steps: 0, searches: 0, pages: 0 });
     setElapsed(0);
     setHighlightEv(null);
+    setCiteFocus(null);
     stepRef.current = 0;
     readersRef.current = {};
   };
@@ -376,6 +378,11 @@ export default function App() {
     setHighlightEv(n);
   };
 
+  // 反向联动：点证据卡 → 高亮报告中引用它的 [n]，再点一次取消
+  const onCardClick = (n: number) => {
+    setCiteFocus((c) => (c === n ? null : n));
+  };
+
   return (
     <div className="rb-screen">
       <Header
@@ -398,6 +405,8 @@ export default function App() {
             phase={phase}
             highlight={highlightEv}
             onHighlightDone={() => setHighlightEv(null)}
+            onCardClick={onCardClick}
+            citeFocus={citeFocus}
           />
         </div>
         <div className="rb-col rb-col-right">
@@ -409,6 +418,7 @@ export default function App() {
             phase={phase}
             evidenceCount={evidence.length}
             onCiteClick={onCiteClick}
+            citeFocus={citeFocus}
           />
         </div>
       </div>
