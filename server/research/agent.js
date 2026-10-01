@@ -548,7 +548,8 @@ async function investigatorLoop(session, opts = {}) {
 
 /* ---------- 质疑者阶段 ---------- */
 
-async function runSkeptic(session) {
+// 导出供手术式测试：直接以预置证据状态调用质疑者，验证单一域名守卫开火链路
+export async function runSkeptic(session) {
   const limits = session.limits;
   session.stats.steps += 1;
   session.emit({ type: "step", n: session.stats.steps, voice: "skeptic" });
