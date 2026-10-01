@@ -1,0 +1,428 @@
+import { useEffect, useRef, useState } from "react";
+import {
+  startResearch,
+  stopResearch,
+  subscribeResearch,
+  researchInfo,
+  PRESETS,
+  type REvent,
+} from "./api";
+import { JsonFieldReader } from "../json-reader";
+import { Header } from "./components/Header";
+import { InputBar } from "./components/InputBar";
+import { PlanTree, PrinciplesPanel } from "./components/PlanTree";
+import { TrajectoryStream } from "./components/TrajectoryStream";
+import { EvidenceBoard } from "./components/EvidenceBoard";
+import { ReportView } from "./components/ReportView";
+
+export type Phase = "idle" | "running" | "done" | "error";
+export type Voice = "investigator" | "skeptic" | "adjudicator";
+
+export interface PlanItem {
+  id: string;
+  text: string;
+  status: "pending" | "active" | "done";
+}
+export interface Evidence {
+  id: string;
+  index: number;
+  url: string;
+  title: string;
+  quote: string;
+  note: string;
+  tier: number;
+  tierLabel: string;
+  verified: boolean;
+  year: number | null;
+}
+export interface Section {
+  index: number;
+  heading: string;
+  markdown: string;
+  streaming: boolean;
+  confidence?: string;
+  crossVerified?: boolean;
+}
+export interface Conflict {
+  id: number;
+  urls: string[];
+  description: string;
+}
+export interface TrajEntry {
+  key: string;
+  kind:
+    | "thought"
+    | "tool"
+    | "results"
+    | "page"
+    | "fail"
+    | "notice"
+    | "conflict"
+    | "section"
+    | "challenge"
+    | "verdict";
+  text?: string;
+  streaming?: boolean;
+  icon?: string;
+  url?: string;
+  title?: string;
+  snippet?: string;
+  sub?: { title: string; url: string; snippet: string }[];
+  urls?: string[];
+  thoughtNo?: number;
+  voice?: Voice;
+  hasSearch?: boolean;
+}
+
+export default function App() {
+  const [phase, setPhase] = useState<Phase>("idle");
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [question, setQuestion] = useState("");
+  const [input, setInput] = useState("");
+  const [mode, setMode] = useState<"quick" | "deep" | "strict">("quick");
+  const [isMock, setIsMock] = useState(false);
+  const [hasKey, setHasKey] = useState(true);
+  const [forceMock, setForceMock] = useState(false);
+
+  const [plan, setPlan] = useState<PlanItem[]>([]);
+  const [principles, setPrinciples] = useState<string[]>([]);
+  const [evidence, setEvidence] = useState<Evidence[]>([]);
+  const [sections, setSections] = useState<Section[]>([]);
+  const [conflicts, setConflicts] = useState<Conflict[]>([]);
+  const [oneLine, setOneLine] = useState<string | null>(null);
+  const [traj, setTraj] = useState<TrajEntry[]>([]);
+  const [stats, setStats] = useState({ steps: 0, searches: 0, pages: 0 });
+  const [elapsed, setElapsed] = useState(0);
+  const [highlightEv, setHighlightEv] = useState<number | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+
+  const stepRef = useRef(0);
+  const voiceRef = useRef<Voice>("investigator");
+  const readersRef = useRef<Record<string, JsonFieldReader>>({});
+
+  const showToast = (t: string) => {
+    setToast(t);
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  /* ---------- 启动时探测模型配置 ---------- */
+  useEffect(() => {
+    researchInfo()
+      .then((info) => {
+        setHasKey(!!info.hasKey);
+        if (!info.hasKey) showToast("未检测到 Atria API 密钥，将以「演练模式」运行");
+      })
+      .catch(() => {});
+  }, []);
+
+  /* ---------- SSE 事件流 ---------- */
+  useEffect(() => {
+    if (!sessionId) return;
+    const getReader = (n: number) => {
+      const key = `s${n}`;
+      if (!readersRef.current[key]) readersRef.current[key] = new JsonFieldReader("thought");
+      return readersRef.current[key];
+    };
+
+    const pushTraj = (e: Omit<TrajEntry, "key">) => {
+      setTraj((ts) => [...ts, { ...e, key: `${e.kind}_${ts.length}` }]);
+    };
+
+    const unsub = subscribeResearch(sessionId, (e: REvent) => {
+      switch (e.type) {
+        case "state": {
+          const s = e.state;
+          setPhase(s.phase === "error" ? "error" : s.phase === "done" ? "done" : "running");
+          setPlan(s.plan || []);
+          setPrinciples(s.principles || []);
+          setEvidence(s.evidence || []);
+          setSections(
+            (s.sections || []).map((x: any) => ({ ...x, streaming: false })),
+          );
+          setConflicts(s.conflicts || []);
+          setOneLine(s.oneLine || null);
+          setStats(s.stats || { steps: 0, searches: 0, pages: 0 });
+          break;
+        }
+        case "step": {
+          // 新一步思路开始：前一条思路收尾
+          stepRef.current = e.n;
+          voiceRef.current = (e.voice as Voice) || "investigator";
+          getReader(e.n).reset();
+          setStats((s) => ({ ...s, steps: Math.max(s.steps, e.n) }));
+          setTraj((ts) => {
+            const cp = [...ts];
+            const last = cp[cp.length - 1];
+            if (last && last.streaming) cp[cp.length - 1] = { ...last, streaming: false };
+            return cp;
+          });
+          break;
+        }
+        case "text-chunk": {
+          const reader = getReader(stepRef.current);
+          const piece = reader.push(e.chunk as string);
+          if (!piece) break;
+          setTraj((ts) => {
+            const last = ts[ts.length - 1];
+            if (last && last.kind === "thought" && last.streaming) {
+              const cp = [...ts];
+              cp[cp.length - 1] = { ...last, text: last.text + piece };
+              return cp;
+            }
+            return [
+              ...ts,
+              {
+                key: `t_${ts.length}`,
+                kind: "thought",
+                text: piece,
+                streaming: true,
+                thoughtNo: stepRef.current,
+                voice: voiceRef.current,
+              },
+            ];
+          });
+          break;
+        }
+        case "text-done": {
+          setTraj((ts) => {
+            const cp = [...ts];
+            const last = cp[cp.length - 1];
+            if (last && last.streaming) cp[cp.length - 1] = { ...last, streaming: false };
+            return cp;
+          });
+          break;
+        }
+        case "principles":
+          setPrinciples(e.items as string[]);
+          break;
+        case "plan":
+          setPlan(e.items);
+          break;
+        case "search":
+          setStats((s) => ({ ...s, searches: s.searches + 1 }));
+          pushTraj({ kind: "tool", text: `搜索「${e.query}」`, voice: e.voice });
+          break;
+        case "search-results":
+          pushTraj({
+            kind: "results",
+            text: `搜索结果（${e.provider}）`,
+            sub: e.results,
+            voice: e.voice,
+          });
+          break;
+        case "page-open":
+          setStats((s) => ({ ...s, pages: s.pages + 1 }));
+          pushTraj({ kind: "tool", text: "打开页面", url: e.url });
+          break;
+        case "page-read":
+          pushTraj({
+            kind: "page",
+            title: e.title,
+            url: e.url,
+            snippet: e.snippet,
+          });
+          break;
+        case "page-fail":
+          pushTraj({ kind: "fail", text: `读取失败：${e.message}`, url: e.url });
+          break;
+        case "evidence":
+          setEvidence((ev) => [
+            ...ev,
+            {
+              id: e.id,
+              index: e.index,
+              url: e.url,
+              title: e.title,
+              quote: e.quote,
+              note: e.note,
+              tier: e.tier,
+              tierLabel: e.tierLabel,
+              verified: e.verified,
+              year: e.year,
+            },
+          ]);
+          pushTraj({
+            kind: "tool",
+            text: `固定证据 #${e.index}：${e.title}`,
+          });
+          break;
+        case "challenge":
+          pushTraj({
+            kind: "challenge",
+            text: e.text,
+            voice: "skeptic",
+            hasSearch: e.hasSearch,
+          });
+          break;
+        case "verdict":
+          pushTraj({ kind: "verdict", text: e.text, voice: "adjudicator" });
+          break;
+        case "conflict":
+          setConflicts((cs) => [
+            ...cs,
+            { id: e.id, urls: e.urls, description: e.description },
+          ]);
+          pushTraj({ kind: "conflict", text: e.description, urls: e.urls });
+          break;
+        case "section":
+          setSections((ss) => [
+            ...ss,
+            {
+              index: e.index,
+              heading: e.heading,
+              markdown: "",
+              streaming: true,
+              confidence: e.confidence,
+              crossVerified: e.crossVerified,
+            },
+          ]);
+          pushTraj({
+            kind: "section",
+            text: `撰写第 ${e.index} 节「${e.heading}」`,
+          });
+          break;
+        case "section-chunk":
+          setSections((ss) =>
+            ss.map((s) =>
+              s.index === e.index ? { ...s, markdown: s.markdown + e.chunk } : s,
+            ),
+          );
+          break;
+        case "one-line":
+          setOneLine(e.text);
+          break;
+        case "notice":
+          pushTraj({ kind: "notice", text: e.text });
+          break;
+        case "stats":
+          setStats(e.stats);
+          break;
+        case "error":
+          pushTraj({ kind: "fail", text: e.message });
+          break;
+        case "done":
+          setPhase(e.phase === "error" ? "error" : "done");
+          setSections((ss) => ss.map((s) => ({ ...s, streaming: false })));
+          break;
+      }
+    });
+    return unsub;
+  }, [sessionId]);
+
+  /* ---------- 计时器 ---------- */
+  useEffect(() => {
+    if (phase !== "running") return;
+    const t = setInterval(() => setElapsed((x) => x + 1), 1000);
+    return () => clearInterval(t);
+  }, [phase]);
+
+  /* ---------- 开始 / 停止 ---------- */
+  const resetSession = () => {
+    setPlan([]);
+    setPrinciples([]);
+    setEvidence([]);
+    setSections([]);
+    setConflicts([]);
+    setOneLine(null);
+    setTraj([]);
+    setStats({ steps: 0, searches: 0, pages: 0 });
+    setElapsed(0);
+    setHighlightEv(null);
+    stepRef.current = 0;
+    readersRef.current = {};
+  };
+
+  const handleStart = async () => {
+    const q = input.trim();
+    if (!q || phase === "running") return;
+    resetSession();
+    const opts: { mode: string; mock?: boolean } = { mode };
+    if (forceMock) opts.mock = true;
+    const r = await startResearch(q, opts);
+    if (r.error) {
+      showToast(`❌ ${r.error}`);
+      return;
+    }
+    setQuestion(r.question);
+    setIsMock(!!r.mock);
+    setSessionId(r.id);
+    setPhase("running");
+    setElapsed(0);
+  };
+
+  const handleStop = async () => {
+    if (!sessionId) return;
+    await stopResearch(sessionId).catch(() => {});
+    setPhase("done");
+  };
+
+  const handleReset = () => {
+    setSessionId(null);
+    setPhase("idle");
+    resetSession();
+  };
+
+  const onRandom = () => {
+    const p = PRESETS[Math.floor(Math.random() * PRESETS.length)];
+    setInput(p);
+  };
+
+  const onCiteClick = (n: number) => {
+    setHighlightEv(n);
+  };
+
+  return (
+    <div className="rb-screen">
+      <Header
+        phase={phase}
+        elapsed={elapsed}
+        stats={stats}
+        isMock={isMock}
+        onStop={handleStop}
+        showStop={phase === "running"}
+      />
+      <div className="rb-grid">
+        <div className="rb-col rb-col-left">
+          <TrajectoryStream entries={traj} phase={phase} />
+        </div>
+        <div className="rb-col rb-col-center">
+          <EvidenceBoard
+            question={question}
+            evidence={evidence}
+            conflicts={conflicts}
+            phase={phase}
+            highlight={highlightEv}
+            onHighlightDone={() => setHighlightEv(null)}
+          />
+        </div>
+        <div className="rb-col rb-col-right">
+          <PrinciplesPanel principles={principles} />
+          <PlanTree plan={plan} />
+          <ReportView
+            sections={sections}
+            oneLine={oneLine}
+            phase={phase}
+            evidenceCount={evidence.length}
+            onCiteClick={onCiteClick}
+          />
+        </div>
+      </div>
+      <InputBar
+        value={input}
+        setValue={setInput}
+        presets={PRESETS}
+        onRandom={onRandom}
+        mode={mode}
+        setMode={setMode}
+        phase={phase}
+        onStart={handleStart}
+        onStop={handleStop}
+        onReset={handleReset}
+        hasKey={hasKey}
+        forceMock={forceMock}
+        setForceMock={setForceMock}
+      />
+      {toast && <div className="rb-toast">{toast}</div>}
+    </div>
+  );
+}
