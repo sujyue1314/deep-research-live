@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef } from "react";
 import type { Section } from "../App";
 
 interface Props {
@@ -6,10 +7,16 @@ interface Props {
   phase: string;
   evidenceCount: number;
   onCiteClick: (n: number) => void;
+  citeFocus: number | null;
 }
 
 // 极简 markdown 渲染：列表行、加粗、[n] 引用条
-function renderLine(text: string, onCite: (n: number) => void, key: string) {
+function renderLine(
+  text: string,
+  onCite: (n: number) => void,
+  key: string,
+  citeFocus: number | null,
+) {
   const parts = text.split(/(\[\d+(?:\]\[\d+)*\]|\*\*[^*]+\*\*)/g);
   return (
     <span key={key}>
@@ -24,10 +31,12 @@ function renderLine(text: string, onCite: (n: number) => void, key: string) {
         const cite = p.match(/^\[(\d+(?:\]\[\d+)*)\]$/);
         if (cite) {
           const nums = cite[1].split(/\]\[/).map((n) => Number(n));
+          // 反向联动：当前聚焦证据的引用常驻高亮
+          const hl = citeFocus != null && nums.includes(citeFocus);
           return (
             <button
               key={i}
-              className="md-cite"
+              className={`md-cite${hl ? " hl" : ""}`}
               onClick={() => onCite(Math.min(...nums))}
               title={`定位到证据 #${nums.join("、")}`}
             >
@@ -41,8 +50,17 @@ function renderLine(text: string, onCite: (n: number) => void, key: string) {
   );
 }
 
-export function ReportView({ sections, oneLine, phase, onCiteClick }: Props) {
+export function ReportView({ sections, oneLine, phase, onCiteClick, citeFocus }: Props) {
   const writing = sections.some((s) => s.streaming);
+  const bodyRef = useRef<HTMLDivElement | null>(null);
+
+  // 反向联动：点证据卡后，滚到报告首次引用该证据处
+  useLayoutEffect(() => {
+    if (citeFocus == null) return;
+    const el = bodyRef.current?.querySelector(".md-cite.hl");
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [citeFocus, sections]);
+
   return (
     <div className="rb-panel rb-report">
       <div className="rb-panel-head">
@@ -50,8 +68,17 @@ export function ReportView({ sections, oneLine, phase, onCiteClick }: Props) {
         <span className="rb-panel-hint">
           {phase === "done" ? "已完稿" : writing ? "撰写中…" : sections.length ? "取证中…" : "待生成"}
         </span>
+        {sections.length > 0 && (
+          <button
+            className="rb-print-btn"
+            onClick={() => window.print()}
+            title="打印或另存为 PDF"
+          >
+            打印
+          </button>
+        )}
       </div>
-      <div className="rb-report-body">
+      <div className="rb-report-body" ref={bodyRef}>
         {oneLine && (
           <div className="rp-online">
             <span className="rp-online-tag">一句话结论</span>
@@ -86,7 +113,7 @@ export function ReportView({ sections, oneLine, phase, onCiteClick }: Props) {
                   <div className="rp-gap" key={i} />
                 ) : (
                   <div className="rp-line" key={i}>
-                    {renderLine(line, onCiteClick, `${s.index}-${i}`)}
+                    {renderLine(line, onCiteClick, `${s.index}-${i}`, citeFocus)}
                     {s.streaming && i === s.markdown.split("\n").length - 1 && (
                       <span className="tr-caret" />
                     )}

@@ -8,6 +8,8 @@ interface Props {
   phase: string;
   highlight: number | null;
   onHighlightDone: () => void;
+  onCardClick: (n: number) => void;
+  citeFocus: number | null;
 }
 
 function hostOf(url: string) {
@@ -24,6 +26,8 @@ export function EvidenceBoard({
   conflicts,
   highlight,
   onHighlightDone,
+  onCardClick,
+  citeFocus,
 }: Props) {
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
@@ -87,9 +91,13 @@ export function EvidenceBoard({
           )}
           {evidence.map((ev) => (
             <div
-              className={`ev-card ${conflictedIds.has(ev.id) ? "ev-conflict" : ""}`}
+              className={`ev-card ${conflictedIds.has(ev.id) ? "ev-conflict" : ""} ${
+                citeFocus === ev.index ? "ev-active" : ""
+              }`}
               key={ev.id}
               ref={(el) => (cardRefs.current[ev.id] = el)}
+              onClick={() => onCardClick(ev.index)}
+              title="点击联动高亮报告中的引用"
             >
               <a
                 className="ev-title"
@@ -97,6 +105,7 @@ export function EvidenceBoard({
                 target="_blank"
                 rel="noopener noreferrer"
                 title={ev.url}
+                onClick={(e) => e.stopPropagation()}
               >
                 <span className="ev-no">{ev.index}</span>
                 {ev.title}
@@ -115,7 +124,12 @@ export function EvidenceBoard({
               <div className="ev-quote">“{ev.quote}”</div>
               <div className="ev-note">{ev.note}</div>
               <div className="ev-src mono">
-                <a href={ev.url} target="_blank" rel="noopener noreferrer">
+                <a
+                  href={ev.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   {hostOf(ev.url)} ↗
                 </a>
               </div>
