@@ -8,6 +8,7 @@ import {
   extractYear,
   quoteInText,
   distinctHostCount,
+  distinctHosts,
   hostOf,
 } from "./verify.js";
 
@@ -141,9 +142,39 @@ function evidenceBrief(session) {
   return session.evidence
     .map(
       (e) =>
-        `证据 #${e.index} [${e.tierLabel}来源${e.verified ? "·引文已核验" : "·引文未核验"}${e.year ? `·${e.year}` : ""}]\n标题：${e.title}\nURL：${e.url}\n引文：“${e.quote}”\n说明：${e.note}`,
+        `证据 #${e.index} [${e.tierLabel}来源${e.verified ? "·引文已核验" : "·引文未核验"}${e.year ? `·${e.year}` : ""}·域名 ${hostOf(e.url)}]\n标题：${e.title}\nURL：${e.url}\n引文：“${e.quote}”\n说明：${e.note}`,
     )
     .join("\n\n");
+}
+
+/* ---------- 源多样性守卫 ---------- */
+
+/**
+ * 单一域名风险检测（确定性，不依赖模型自报）：
+ * 证据 >= 2 条且全部来自同一域名 → 关键结论缺乏独立交叉验证，触发主动异源补搜
+ */
+function diversityRisk(session) {
+  const hosts = distinctHosts(session.evidence.map((e) => e.url));
+  if (session.evidence.length >= 2 && hosts.length === 1) {
+    return { flagged: true, host: hosts[0], count: session.evidence.length };
+  }
+  return { flagged: false, host: null, count: session.evidence.length };
+}
+
+/**
+ * 推送一条「交叉验证守卫」质疑卡：与模型提出的质疑同事件协议、独立视觉变体
+ */
+function emitDiversityChallenge(session, risk, query, id) {
+  session.emit({
+    type: "challenge",
+    id,
+    kind: "diversity",
+    text: `单一域名风险：当前 ${risk.count} 条证据全部来自 ${risk.host}，关键结论缺乏独立交叉验证。`,
+    host: risk.host,
+    count: risk.count,
+    query: query || null,
+    hasSearch: !!query,
+  });
 }
 
 /* ---------- Action 执行器（含机器强制校验） ---------- */
@@ -184,7 +215,13 @@ async function executeAction(session, action, opts = {}) {
 
     case "web_search": {
       if (session.stats.searches >= budget.maxSearches) {
-        return { ok: false, msg: `搜索预算（${budget.maxSearches} 次）已用尽，请改用已有证据写报告或 finish。` };
+        // 守卫额外批准的异源补搜预算（仅单一域名风险触发时存在）
+        if ((session._diversityGrant || 0) > 0) {
+          session._diversityGrant -= 1;
+          session.emit({ type: "notice", text: "系统守卫已额外批准一次异源检索" });
+        } else {
+          return { ok: false, msg: `搜索预算（${budget.maxSearches} 次）已用尽，请改用已有证据写报告或 finish。` };
+        }
       }
       const query = String(action.query || "").trim();
       if (!query) return { ok: false, msg: "query 不能为空" };
@@ -365,6 +402,27 @@ async function executeAction(session, action, opts = {}) {
     }
 
     case "finish": {
+      // 单一域名守卫（quick/deep）：证据全部同域名时拦截一次，给异源补证机会
+      if (!opts.strictSuffix && !session._diversityGuardUsed && session.evidence.length >= 2) {
+        const hosts = distinctHosts(session.evidence.map((e) => e.url));
+        if (hosts.length === 1) {
+          session._diversityGuardUsed = true;
+          const grant = limits.diversitySearches || 1;
+          session._diversityGrant = (session._diversityGrant || 0) + grant;
+          emitDiversityChallenge(session, { host: hosts[0], count: session.evidence.length }, null, 1);
+          return {
+            ok: false,
+            msg: `系统守卫：所有 ${session.evidence.length} 条证据均来自单一域名 ${hosts[0]}。这是收尾前的补证机会（系统已额外批准 ${grant} 次搜索）：请用一条面向该域名之外权威来源的关键词做一次 web_search，并固定至少一条异源证据后再写报告；若确实找不到异源来源，可再次 finish 放行，但相应结论置信度只能为中。`,
+          };
+        }
+      }
+      // 守卫后仍单域名：如实标注，置信度上限由 write_section 机器规则压到中
+      if (session._diversityGuardUsed && session.evidence.length >= 2) {
+        const hosts = distinctHosts(session.evidence.map((e) => e.url));
+        if (hosts.length === 1) {
+          session.emit({ type: "notice", text: "单一域名交叉验证未达成：报告相应结论置信度上限为中" });
+        }
+      }
       // 零证据拦截：防止「拒绝调查」式收尾，给模型两次改正机会后放行
       if (!session.evidence.length && (session._finishAttempts || 0) < 2) {
         session._finishAttempts = (session._finishAttempts || 0) + 1;
@@ -495,6 +553,8 @@ async function runSkeptic(session) {
   session.stats.steps += 1;
   session.emit({ type: "step", n: session.stats.steps, voice: "skeptic" });
 
+  // 机器检测：证据是否集中于单一域名（确定性判定，不依赖模型自报）
+  const risk = diversityRisk(session);
   const conflictsBrief = session.conflicts.length
     ? session.conflicts.map((c, i) => `冲突${i + 1}：${c.description}`).join("\n")
     : "（未标记冲突）";
@@ -519,9 +579,17 @@ ${conflictsBrief}
   "thought": "向观众说明你的总体审查判断（50-150 字）",
   "challenges": [
     {"text": "具体质疑内容（点明针对的证据编号或环节）", "search": "可选：为查证该质疑需要追加的搜索关键词"}
-  ]
+  ]${
+    risk.flagged
+      ? `,\n  "diversity_query": "异源检索关键词：一条面向「${risk.host}」之外其他权威来源的检索词，直接面向研究问题本身，禁用 site: 语法"`
+      : ""
+  }
 }
-challenges 1-${limits.maxChallenges} 条，只挑最致命的。`;
+challenges 1-${limits.maxChallenges} 条，只挑最致命的。${
+      risk.flagged
+        ? `\n\n【系统单一域名风险】当前 ${risk.count} 条证据全部来自同一域名「${risk.host}」，关键结论缺乏独立交叉验证。diversity_query 为本次必填项。`
+        : ""
+    }`;
 
   let result;
   try {
@@ -562,6 +630,73 @@ challenges 1-${limits.maxChallenges} 条，只挑最致命的。`;
     session.emit({ type: "challenge", id: i + 1, text: c.text, hasSearch: !!c.search });
   });
 
+  // ===== 交叉验证守卫：单一域名风险的主动异源补搜 =====
+  const diversityQuery = risk.flagged
+    ? String(result?.parsed?.diversity_query || "").trim().slice(0, 120)
+    : null;
+  const diversity = {
+    ...risk,
+    query: diversityQuery,
+    tried: false,
+    succeeded: false,
+    newHosts: [],
+    attempts: 0,
+  };
+  if (risk.flagged) {
+    emitDiversityChallenge(session, risk, diversityQuery, capped.length + 1);
+    if (diversityQuery) {
+      const knownHosts = new Set(distinctHosts(session.evidence.map((e) => e.url)));
+      diversity.tried = true;
+      while (diversity.attempts < (limits.diversitySearches || 0)) {
+        diversity.attempts += 1;
+        // 第二次起自动排除已知域名，逼迫异源结果（Tavily exclude_domains）
+        const opts = diversity.attempts > 1 ? { excludeDomains: [...knownHosts] } : {};
+        session.stats.searches += 1;
+        session.emit({
+          type: "search",
+          query: diversityQuery,
+          n: session.stats.searches,
+          voice: "skeptic",
+        });
+        const { results, provider } = await webSearch(diversityQuery, 5, opts);
+        results.forEach((r) => {
+          session.noteKnown(r.url);
+          session.noteContext(r.url, `${r.title} ${r.snippet}`);
+        });
+        session.emit({ type: "search-results", query: diversityQuery, results, provider, voice: "skeptic" });
+        const freshHosts = [
+          ...new Set(results.map((r) => hostOf(r.url)).filter((h) => h && !knownHosts.has(h))),
+        ];
+        if (freshHosts.length) {
+          diversity.succeeded = true;
+          diversity.newHosts = freshHosts;
+          session.emit({
+            type: "notice",
+            text: `异源补搜成功：发现 ${freshHosts.length} 个新域名来源（${freshHosts.join("、")}），等待调查员固定交叉证据`,
+          });
+          break;
+        }
+        if (diversity.attempts < (limits.diversitySearches || 0)) {
+          session.emit({
+            type: "notice",
+            text: `异源补搜第 ${diversity.attempts} 次结果仍限于已知域名，已自动排除 ${risk.host} 重试`,
+          });
+        }
+      }
+      if (!diversity.succeeded) {
+        session.emit({
+          type: "notice",
+          text: `异源补搜未能在 ${risk.host} 之外找到相关来源：交叉验证条件未达成，报告置信度上限将为中`,
+        });
+      }
+    } else {
+      session.emit({
+        type: "notice",
+        text: "质疑者未给出异源检索词：按单一来源处理，置信度上限为中",
+      });
+    }
+  }
+
   // 带 search 的挑战：服务端直接执行追加搜索（预算：rebuttalSearches）
   let searchBudget = limits.rebuttalSearches || 0;
   const rebuttalResults = [];
@@ -578,12 +713,24 @@ challenges 1-${limits.maxChallenges} 条，只挑最致命的。`;
     session.emit({ type: "search-results", query: c.search, results, provider, voice: "skeptic" });
     rebuttalResults.push({ challenge: c.text, query: c.search, results });
   }
-  return { challenges: capped, rebuttalResults };
+
+  // 答辩挑战清单：把守卫质疑一并交给调查员回应
+  const allChallenges = risk.flagged
+    ? [
+        ...capped,
+        {
+          text: `单一域名风险：当前 ${risk.count} 条证据全部来自 ${risk.host}，请从异源补搜结果中固定至少一条交叉证据`,
+          search: diversityQuery,
+          isDiversity: true,
+        },
+      ]
+    : capped;
+  return { challenges: allChallenges, rebuttalResults, diversity };
 }
 
 /* ---------- 裁决者阶段 ---------- */
 
-async function runAdjudicator(session) {
+async function runAdjudicator(session, diversity = null) {
   const limits = session.limits;
   session.stats.steps += 1;
   session.emit({ type: "step", n: session.stats.steps, voice: "adjudicator" });
@@ -591,6 +738,16 @@ async function runAdjudicator(session) {
   const conflictsBrief = session.conflicts.length
     ? session.conflicts.map((c, i) => `冲突${i + 1}：${c.description}（涉及：${c.urls.map(hostOf).join("、")}）`).join("\n")
     : "（无标记冲突）";
+
+  // 交叉验证状态：当前域名分布 + 系统异源补搜结果（供裁决者判定，但最终以机器复核为准）
+  const hostsAll = distinctHosts(session.evidence.map((e) => e.url));
+  const crossBrief =
+    `${session.evidence.length} 条证据覆盖 ${hostsAll.length} 个域名：${hostsAll.join("、")}。` +
+    (diversity?.flagged
+      ? diversity.succeeded
+        ? `系统已异源补搜（检索词「${diversity.query}」），新域名来源已入池，请优先引用异源证据完成跨域名交叉验证。`
+        : `系统异源补搜${diversity.tried ? "未找到可用异源来源" : "未能执行（质疑者未给出检索词）"}：不得在报告中宣称未达成的交叉验证，置信度如实判定。`
+      : "");
 
   const user = `你是「现场调查局」的裁决者。调查员与质疑者已完成取证与辩论，现在由你裁决争议并撰写最终报告。
 
@@ -601,6 +758,8 @@ ${evidenceBrief(session)}
 
 【冲突记录】
 ${conflictsBrief}
+
+【来源域名分布】${crossBrief}
 
 【裁决规则】
 - 置信度「高」：≥2 个不同域名的权威来源一致支撑。
@@ -756,6 +915,15 @@ export async function runResearch(session) {
         const prime = [
           "【系统】质疑者提出以下挑战，请逐条回应（可继续 save_evidence 补证，但不要 write_section）：",
           ...skeptic.challenges.map((c, i) => `${i + 1}. ${c.text}`),
+          // 交叉验证指令：系统守卫发现的单一域名风险 + 补搜结果
+          ...(skeptic.diversity?.flagged
+            ? [
+                `【系统交叉验证指令】当前证据集中于单一域名 ${skeptic.diversity.host}。` +
+                  (skeptic.diversity.succeeded
+                    ? `系统已异源补搜「${skeptic.diversity.query}」，结果中出现新域名来源：${skeptic.diversity.newHosts.join("、")}。请从异源结果中 save_evidence 至少一条证据，使关键结论达到跨域名交叉验证标准。`
+                    : `异源补搜${skeptic.diversity.tried ? "已执行但未找到可用异源来源" : "未能执行（质疑者未给出检索词）"}。请如实维持单一来源口径，报告置信度按中处理，不要伪造交叉验证。`),
+              ]
+            : []),
           "【系统】当前证据清单供你回应时参考：",
           evidenceBrief(session),
           ...(skeptic.rebuttalResults.length
@@ -768,7 +936,8 @@ export async function runResearch(session) {
         r = await investigatorLoop(session, {
           budget: {
             ...limits,
-            maxSearches: limits.maxSearches + (limits.rebuttalSearches || 0),
+            // 答辩预算 = 质疑查证 + 系统异源补搜额度（补搜预算不挤占质疑者的查证搜索）
+            maxSearches: limits.maxSearches + (limits.rebuttalSearches || 0) + (limits.diversitySearches || 0),
             maxPages: limits.maxPages + 2,
           },
           stopSteps: limits.maxSteps + (limits.rebuttalSteps || 0),
@@ -784,7 +953,7 @@ export async function runResearch(session) {
         session.aborted = false;
         return finalize(session);
       }
-      await runAdjudicator(session);
+      await runAdjudicator(session, skeptic?.diversity || null);
       await finalize(session);
     } else {
       // 单智能体模式（quick / deep）

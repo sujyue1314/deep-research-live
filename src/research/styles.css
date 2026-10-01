@@ -1079,6 +1079,57 @@ body {
   color: var(--ink);
 }
 
+/* 交叉验证守卫变体：系统检测的单一域名风险 */
+.tr-challenge.cross {
+  background: #f4eee2;
+  border-left: 3px solid var(--clay-deep);
+}
+
+.tr-ch-tag.cross-tag {
+  color: var(--clay-deep);
+  border-color: var(--clay-deep);
+}
+
+.tr-ch-hosts {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 9px 0 3px;
+  flex-wrap: wrap;
+}
+
+.tr-ch-hosts .host-chip {
+  font-size: 10px;
+  font-family: var(--mono);
+  border: 1px solid var(--line);
+  padding: 1px 7px;
+  border-radius: 2px;
+  color: var(--ink-dim);
+}
+
+.tr-ch-hosts .host-chip.new {
+  border-color: var(--clay-deep);
+  color: var(--clay-deep);
+  font-weight: 600;
+}
+
+.tr-ch-hosts .host-arrow {
+  color: var(--clay-deep);
+  font-size: 11px;
+}
+
+.tr-ch-hosts .host-count {
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: var(--ink-faint);
+}
+
+.tr-ch-query {
+  font-size: 11.5px;
+  color: var(--ink-dim);
+  margin-top: 3px;
+}
+
 /* ---------- 证据徽章 ---------- */
 
 .ev-badges {

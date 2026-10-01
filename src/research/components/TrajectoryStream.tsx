@@ -63,6 +63,29 @@ export function TrajectoryStream({ entries, phase }: Props) {
             );
           }
           if (e.kind === "challenge") {
+            if (e.cross) {
+              return (
+                <div key={e.key} className="tr-challenge cross">
+                  <div className="tr-ch-head">
+                    <VoiceTag voice="skeptic" />
+                    <span className="tr-ch-tag cross-tag">交叉验证 · 守卫</span>
+                    {e.hasSearch ? (
+                      <span className="tr-ch-search">异源补搜已执行</span>
+                    ) : (
+                      <span className="tr-ch-search">待异源补证</span>
+                    )}
+                  </div>
+                  <div className="tr-ch-body">{e.text}</div>
+                  <div className="tr-ch-hosts">
+                    <span className="host-chip">{e.cross.host}</span>
+                    <span className="host-arrow">→</span>
+                    <span className="host-chip new">异源来源</span>
+                    <span className="host-count">全部 {e.cross.count} 条证据同域</span>
+                  </div>
+                  {e.cross.query && <div className="tr-ch-query">检索词：{e.cross.query}</div>}
+                </div>
+              );
+            }
             return (
               <div key={e.key} className="tr-challenge">
                 <div className="tr-ch-head">

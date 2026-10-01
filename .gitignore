@@ -6,6 +6,9 @@ dist/
 # worktree 迭代目录（每次优化一个）
 .wt/
 
+# worktree 本地运行产物（端口对、日志、截图、scratch 验证脚本）
+.run/
+
 # 验证截图与日志
 .shots/
 .scratch/

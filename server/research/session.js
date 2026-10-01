@@ -3,8 +3,22 @@ import { randomUUID } from "node:crypto";
 import { EventEmitter } from "node:events";
 
 export const MODES = {
-  quick: { maxSteps: 26, maxSearches: 8, maxPages: 10, maxSections: 4, timeoutMs: 5 * 60_000 },
-  deep: { maxSteps: 48, maxSearches: 16, maxPages: 24, maxSections: 7, timeoutMs: 12 * 60_000 },
+  quick: {
+    maxSteps: 26,
+    maxSearches: 8,
+    maxPages: 10,
+    maxSections: 4,
+    timeoutMs: 5 * 60_000,
+    diversitySearches: 1, // 收尾前单一域名守卫批准的异源补搜
+  },
+  deep: {
+    maxSteps: 48,
+    maxSearches: 16,
+    maxPages: 24,
+    maxSections: 7,
+    timeoutMs: 12 * 60_000,
+    diversitySearches: 1,
+  },
   // 严格模式：调查员取证 → 质疑者挑战 → 调查员答辩 → 裁决者撰写
   strict: {
     maxSteps: 22,     // 调查员阶段步数
@@ -16,6 +30,7 @@ export const MODES = {
     rebuttalSteps: 4,      // 调查员答辩步数
     rebuttalSearches: 3,   // 质疑触发的追加搜索
     maxChallenges: 4,      // 质疑者最多提出的挑战
+    diversitySearches: 2,  // 单一域名风险触发后的系统异源补搜（可重试一次，自动排除已知域名）
   },
 };
 

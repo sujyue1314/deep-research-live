@@ -51,16 +51,21 @@ async function timedFetch(url, opts = {}) {
 
 /* ---------- 搜索提供者 ---------- */
 
-async function searchTavily(query, limit) {
+async function searchTavily(query, limit, opts = {}) {
   const key = process.env.TAVILY_API_KEY;
   if (!key) return null;
+  const body = { query, max_results: limit, search_depth: "basic" };
+  // 交叉验证补搜专用：排除已知域名，逼迫异源结果
+  if (Array.isArray(opts.excludeDomains) && opts.excludeDomains.length) {
+    body.exclude_domains = [...new Set(opts.excludeDomains)];
+  }
   const res = await timedFetch("https://api.tavily.com/search", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${key}`,
     },
-    body: JSON.stringify({ query, max_results: limit, search_depth: "basic" }),
+    body: JSON.stringify(body),
   });
   if (!res.ok) {
     console.warn(`[research.tools] tavily HTTP ${res.status}`);
@@ -226,8 +231,9 @@ async function searchSearx(query, limit) {
 /**
  * 搜索：依次尝试各提供者，第一个成功即返回
  * 每个 provider 的结果先经相关性过滤（剔除标题/摘要与查询零相关的垃圾页）
+ * opts.excludeDomains：排除已知域名，用于交叉验证补搜（仅 Tavily 支持）
  */
-export async function webSearch(query, limit = 5) {
+export async function webSearch(query, limit = 5, opts = {}) {
   const q = String(query || "").slice(0, 200);
   if (!q) return { results: [], provider: "none" };
   for (const [name, fn] of [
@@ -239,7 +245,7 @@ export async function webSearch(query, limit = 5) {
     ["bing", searchBing],
   ]) {
     try {
-      const rows = await fn(q, limit + 3);
+      const rows = await fn(q, limit + 3, opts);
       if (!rows || !rows.length) continue;
       const kept = relevanceFilter(q, rows).slice(0, limit);
       if (kept.length) {

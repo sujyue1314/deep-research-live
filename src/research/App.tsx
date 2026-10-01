@@ -72,6 +72,7 @@ export interface TrajEntry {
   thoughtNo?: number;
   voice?: Voice;
   hasSearch?: boolean;
+  cross?: { host: string; count: number; query?: string | null };
 }
 
 export default function App() {
@@ -252,6 +253,10 @@ export default function App() {
             text: e.text,
             voice: "skeptic",
             hasSearch: e.hasSearch,
+            cross:
+              e.kind === "diversity"
+                ? { host: e.host, count: e.count, query: e.query ?? null }
+                : undefined,
           });
           break;
         case "verdict":
