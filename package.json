@@ -10,7 +10,9 @@
     "dev": "concurrently -k -n server,client -c blue,green \"pnpm dev:server\" \"pnpm dev:client\"",
     "build": "vite build",
     "start": "node server/index.js",
-    "sim": "node server/sim.js"
+    "sim": "node server/sim.js",
+    "verify": "node scripts/verify.mjs",
+    "verify:ui": "node scripts/verify.mjs ui"
   },
   "dependencies": {
     "react": "^18.3.1",
