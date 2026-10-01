@@ -713,3 +713,54 @@ function pushEvidence(session, item, planIdx) {
   }
   session.emit({ type: "evidence", ...item });
 }
+
+/* ---------- 演练模式的追问：关键词路由的预制诚实回答 ---------- */
+
+export async function runMockFollowup(session, question) {
+  const q = String(question || "").trim().slice(0, 300);
+  const id = `qa${session.qa.length + 1}`;
+  const entry = { id, q, a: "", note: null };
+  session.qa.push(entry);
+  session.emit({ type: "qa-q", id, q });
+
+  // 按证据内容关键词定位引用编号（对 quick/strict 两种证据编号都稳健）
+  const evNo = (kw) => {
+    const e = session.evidence.find((x) => `${x.title}${x.quote}${x.note}`.includes(kw));
+    return e ? e.index : null;
+  };
+  const routes = [
+    {
+      keys: ["2024", "减少", "净流出", "2480", "常住"],
+      a: `公报口径：2024 年末上海常住人口 2480.5 万人，比上年减少 7.0 万人，是近十年首次年度净流出。[${evNo("2480.5") ?? 1}]`,
+    },
+    {
+      keys: ["2023", "峰值", "增加"],
+      a: `2023 年末常住人口 2487.45 万人，比上年增加 11.5 万，处于十年峰值。[${evNo("2487.45") ?? 2}]`,
+    },
+    {
+      keys: ["户籍", "外来", "结构"],
+      a: `结构上一升一降：户籍人口增至 1480.2 万（落户政策驱动），外来常住人口从千万峰值回落，是总量转负的直接原因。[${evNo("结构") ?? 3}]`,
+    },
+    {
+      keys: ["原因", "为什么", "归因"],
+      a: `归因有新华社独立报道支撑：生活成本、产业转移与长三角城市群分流是三大主因，落户政策对冲了部分流出。[${evNo("归因") ?? 4}]`,
+    },
+    {
+      keys: ["政策", "落户"],
+      a: `上海人社局口径确认：2024 年应届毕业生直接落户高校名单进一步扩围、居转户年限持续优化——落户政策是户籍人口机械增长的主要驱动力。[${evNo("落户") ?? 5}]`,
+    },
+  ];
+  const hit = routes.find((r) => r.keys.some((k) => q.includes(k)));
+  const answer = hit
+    ? hit.a
+    : "本次调查的证据只覆盖上海常住人口的总量曲线、结构分化与归因，没有你问的这方面的记录，无法回答——这需要在官方口径下重新取证。";
+  let i = 0;
+  while (i < answer.length) {
+    const chunk = answer.slice(i, i + 4);
+    i += 4;
+    entry.a += chunk;
+    session.emit({ type: "qa-chunk", id, chunk });
+    await sleep(55);
+  }
+  session.emit({ type: "qa-done", id });
+}

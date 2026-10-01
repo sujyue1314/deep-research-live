@@ -1331,11 +1331,134 @@ body {
     display: none !important;
   }
   .rp-section,
-  .ev-card {
+  .ev-card,
+  .qa-item {
     break-inside: avoid;
   }
   .ev-card {
     border: 1px solid var(--line);
     box-shadow: none;
   }
+  .rb-qa-form {
+    display: none !important;
+  }
+}
+
+/* ---------- 报告追问（iter-3） ---------- */
+
+.rb-qa {
+  border-top: 1px solid var(--ink);
+  margin-top: 22px;
+  padding-top: 16px;
+}
+
+.rb-qa-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 14px;
+  font-family: var(--serif);
+  font-size: 16px;
+  letter-spacing: 1px;
+}
+
+.qa-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.qa-item {
+  border-left: 2px solid var(--line);
+  padding-left: 14px;
+}
+
+.qa-note {
+  font-size: 10.5px;
+  letter-spacing: 1px;
+  color: var(--clay-deep);
+  background: var(--clay-soft);
+  border: 1px solid var(--clay);
+  border-radius: 2px;
+  padding: 4px 9px;
+  margin-bottom: 8px;
+}
+
+.qa-q {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 5px;
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.qa-tag {
+  font-family: var(--serif);
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--clay-deep);
+  border-radius: 2px;
+  padding: 1px 6px;
+  flex-shrink: 0;
+  letter-spacing: 2px;
+}
+
+.qa-a {
+  font-size: 12.5px;
+  line-height: 1.85;
+  color: var(--ink-dim);
+}
+
+.rb-qa-form {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+  align-items: center;
+}
+
+.rb-qa-input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--ink);
+  color: var(--ink);
+  font-size: 13.5px;
+  font-family: var(--serif);
+  padding: 7px 4px;
+  outline: none;
+}
+
+.rb-qa-input::placeholder {
+  color: var(--ink-faint);
+  font-style: italic;
+}
+
+.rb-qa-input:focus {
+  border-bottom-color: var(--clay);
+}
+
+.rb-qa-send {
+  font-size: 10.5px;
+  letter-spacing: 2.5px;
+  font-weight: 700;
+  color: var(--clay-deep);
+  background: none;
+  border: 1px solid var(--clay);
+  border-radius: 2px;
+  padding: 5px 14px;
+  cursor: pointer;
+}
+
+.rb-qa-send:hover:not(:disabled) {
+  background: var(--clay-soft);
+  border-color: var(--clay-deep);
+}
+
+.rb-qa-send:disabled {
+  opacity: 0.4;
+  cursor: default;
 }

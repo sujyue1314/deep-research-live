@@ -51,6 +51,7 @@ export class ResearchSession {
     this.conflicts = []; // [{ id, urls, description }]
     this.stats = { steps: 0, searches: 0, pages: 0, providers: {} };
     this.oneLine = null;
+    this.qa = []; // 报告完稿后的追问 [{ id, q, a, note }]
 
     // 内部
     this._knownUrls = new Set(); // 经搜索/读取出现过的原始 URL（引用合法性校验用）
@@ -78,12 +79,14 @@ export class ResearchSession {
       conflicts: this.conflicts,
       stats: this.stats,
       oneLine: this.oneLine,
+      qa: this.qa,
     };
   }
 
   /** 推送一个事件：本地记录 + 广播给 SSE 订阅者 */
+  // 会话关闭后，qa-*（追问）事件仍允许推送：报告完稿后的 Q&A 复用同一条事件总线
   emit(evt) {
-    if (this.closed) return;
+    if (this.closed && !(typeof evt?.type === "string" && evt.type.startsWith("qa"))) return;
     this._events.push(evt);
     this._bus.emit("event", evt);
   }

@@ -138,7 +138,7 @@ function shortUrl(u) {
   }
 }
 
-function evidenceBrief(session) {
+export function evidenceBrief(session) {
   return session.evidence
     .map(
       (e) =>

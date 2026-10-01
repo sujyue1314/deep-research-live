@@ -1,5 +1,5 @@
-import { useLayoutEffect, useRef } from "react";
-import type { Section } from "../App";
+import { useLayoutEffect, useRef, useState } from "react";
+import type { Section, QaItem } from "../App";
 
 interface Props {
   sections: Section[];
@@ -8,6 +8,8 @@ interface Props {
   evidenceCount: number;
   onCiteClick: (n: number) => void;
   citeFocus: number | null;
+  qa: QaItem[];
+  onAsk: (q: string) => void;
 }
 
 // 极简 markdown 渲染：列表行、加粗、[n] 引用条
@@ -50,9 +52,10 @@ function renderLine(
   );
 }
 
-export function ReportView({ sections, oneLine, phase, onCiteClick, citeFocus }: Props) {
+export function ReportView({ sections, oneLine, phase, onCiteClick, citeFocus, qa, onAsk }: Props) {
   const writing = sections.some((s) => s.streaming);
   const bodyRef = useRef<HTMLDivElement | null>(null);
+  const [qInput, setQInput] = useState("");
 
   // 反向联动：点证据卡后，滚到报告首次引用该证据处
   useLayoutEffect(() => {
@@ -60,6 +63,20 @@ export function ReportView({ sections, oneLine, phase, onCiteClick, citeFocus }:
     const el = bodyRef.current?.querySelector(".md-cite.hl");
     el?.scrollIntoView({ behavior: "smooth", block: "center" });
   }, [citeFocus, sections]);
+
+  // 新问答条目进入视图（只在条目数变化时滚，不跟流式 chunk 抢滚动）
+  const qaLenRef = useRef(0);
+  useLayoutEffect(() => {
+    if (qa.length <= qaLenRef.current) {
+      qaLenRef.current = qa.length;
+      return;
+    }
+    qaLenRef.current = qa.length;
+    const list = bodyRef.current?.querySelector(".qa-list");
+    list?.lastElementChild?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [qa]);
+
+  const canAsk = phase === "done" && sections.length > 0;
 
   return (
     <div className="rb-panel rb-report">
@@ -123,6 +140,50 @@ export function ReportView({ sections, oneLine, phase, onCiteClick, citeFocus }:
             </div>
           </div>
         ))}
+        {canAsk && (
+          <div className="rb-qa">
+            <div className="rb-qa-head">
+              <span>追问 · Follow-up</span>
+              <span className="rb-panel-hint">回答仅基于本次固定的证据</span>
+            </div>
+            <div className="qa-list">
+              {qa.map((item) => (
+                <div className="qa-item" key={item.id}>
+                  {item.note && <div className="qa-note">{item.note}</div>}
+                  <div className="qa-q">
+                    <span className="qa-tag">问</span>
+                    {item.q}
+                  </div>
+                  <div className="qa-a">
+                    {renderLine(item.a, onCiteClick, `qa-${item.id}`, citeFocus)}
+                    {item.streaming && <span className="tr-caret" />}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <form
+              className="rb-qa-form"
+              onSubmit={(ev) => {
+                ev.preventDefault();
+                const t = qInput.trim();
+                if (!t) return;
+                setQInput("");
+                onAsk(t);
+              }}
+            >
+              <input
+                className="rb-qa-input"
+                value={qInput}
+                onChange={(e) => setQInput(e.target.value)}
+                placeholder="就这份证据追问，如：2024 年减少了多少？"
+                maxLength={200}
+              />
+              <button className="rb-qa-send" type="submit" disabled={!qInput.trim()}>
+                追问
+              </button>
+            </form>
+          </div>
+        )}
       </div>
     </div>
   );
