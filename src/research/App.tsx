@@ -4,6 +4,7 @@ import {
   stopResearch,
   subscribeResearch,
   researchInfo,
+  askResearch,
   PRESETS,
   type REvent,
 } from "./api";
@@ -48,6 +49,13 @@ export interface Conflict {
   urls: string[];
   description: string;
 }
+export interface QaItem {
+  id: string;
+  q: string;
+  a: string;
+  streaming: boolean;
+  note?: string | null;
+}
 export interface TrajEntry {
   key: string;
   kind:
@@ -91,6 +99,7 @@ export default function App() {
   const [sections, setSections] = useState<Section[]>([]);
   const [conflicts, setConflicts] = useState<Conflict[]>([]);
   const [oneLine, setOneLine] = useState<string | null>(null);
+  const [qa, setQa] = useState<QaItem[]>([]);
   const [traj, setTraj] = useState<TrajEntry[]>([]);
   const [stats, setStats] = useState({ steps: 0, searches: 0, pages: 0 });
   const [elapsed, setElapsed] = useState(0);
@@ -144,6 +153,7 @@ export default function App() {
           setConflicts(s.conflicts || []);
           setOneLine(s.oneLine || null);
           setStats(s.stats || { steps: 0, searches: 0, pages: 0 });
+          setQa((s.qa || []).map((x: any) => ({ ...x, streaming: false })));
           break;
         }
         case "step": {
@@ -297,6 +307,21 @@ export default function App() {
         case "one-line":
           setOneLine(e.text);
           break;
+        case "qa-q":
+          setQa((qs) => [...qs, { id: e.id as string, q: e.q as string, a: "", streaming: true }]);
+          break;
+        case "qa-note":
+          // 机器诚实性复核打回：清空旧答案重流
+          setQa((qs) =>
+            qs.map((x) => (x.id === e.id ? { ...x, a: "", note: e.text as string, streaming: true } : x)),
+          );
+          break;
+        case "qa-chunk":
+          setQa((qs) => qs.map((x) => (x.id === e.id ? { ...x, a: x.a + (e.chunk as string) } : x)));
+          break;
+        case "qa-done":
+          setQa((qs) => qs.map((x) => (x.id === e.id ? { ...x, streaming: false } : x)));
+          break;
         case "notice":
           pushTraj({ kind: "notice", text: e.text });
           break;
@@ -330,6 +355,7 @@ export default function App() {
     setSections([]);
     setConflicts([]);
     setOneLine(null);
+    setQa([]);
     setTraj([]);
     setStats({ steps: 0, searches: 0, pages: 0 });
     setElapsed(0);
@@ -383,6 +409,13 @@ export default function App() {
     setCiteFocus((c) => (c === n ? null : n));
   };
 
+  // 报告追问：答案以 qa-* 事件回流（复用 SSE 订阅）
+  const onAsk = async (q: string) => {
+    if (!sessionId) return;
+    const r = await askResearch(sessionId, q).catch(() => ({ error: "网络错误" }));
+    if (r.error) showToast(`❌ ${r.error}`);
+  };
+
   return (
     <div className="rb-screen">
       <Header
@@ -419,6 +452,8 @@ export default function App() {
             evidenceCount={evidence.length}
             onCiteClick={onCiteClick}
             citeFocus={citeFocus}
+            qa={qa}
+            onAsk={onAsk}
           />
         </div>
       </div>

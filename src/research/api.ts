@@ -20,6 +20,16 @@ export async function stopResearch(id: string) {
   await fetch(`/api/research/${id}/stop`, { method: "POST" });
 }
 
+// 报告追问（报告完稿后解锁；答案走同一条 SSE 事件流的 qa-* 事件）
+export async function askResearch(id: string, question: string) {
+  const r = await fetch(`/api/research/${id}/ask`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ question }),
+  });
+  return r.json();
+}
+
 export async function researchInfo() {
   const r = await fetch("/api/research/info");
   return r.json() as Promise<{ hasKey: boolean; model: string }>;

@@ -2,7 +2,8 @@
 import { API_KEY, MODEL } from "../config.js";
 import { ResearchSession } from "./session.js";
 import { runResearch } from "./agent.js";
-import { runMockResearch, MOCK_QUESTION } from "./mock.js";
+import { runFollowup } from "./qa.js";
+import { runMockResearch, runMockFollowup, MOCK_QUESTION } from "./mock.js";
 
 const sessions = new Map();
 
@@ -106,6 +107,25 @@ export async function handleResearch(req, res, url, method) {
     if (!s) return json(res, 404, { error: "调查不存在" }), true;
     s.abort();
     s.emit({ type: "notice", text: "⏹ 已手动停止调查" });
+    return json(res, 200, { ok: true }), true;
+  }
+
+  // 报告追问（报告完稿后解锁）
+  const askMatch = url.match(/^\/api\/research\/([\w-]+)\/ask$/);
+  if (method === "POST" && askMatch) {
+    const s = sessions.get(askMatch[1]);
+    if (!s) return json(res, 404, { error: "调查不存在" }), true;
+    if (s.phase !== "done" || !s.evidence.length) {
+      return json(res, 400, { error: "追问在报告完稿后解锁" }), true;
+    }
+    const body = await readBody(req);
+    const q = String(body.question || "").trim();
+    if (!q) return json(res, 400, { error: "question 不能为空" }), true;
+    const runner = s.mock ? runMockFollowup : runFollowup;
+    runner(s, q).catch((e) => {
+      console.error(`[research] 追问异常:`, e);
+      s.emit({ type: "notice", text: `追问失败：${String(e?.message || e).slice(0, 120)}` });
+    });
     return json(res, 200, { ok: true }), true;
   }
 
