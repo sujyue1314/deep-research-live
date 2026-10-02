@@ -467,7 +467,7 @@ async function verifyUi() {
   ok(typo.doc?.head && !!typo.doc?.verdict, "文号头 + 裁决段（iter-17 公报）");
   ok(typo.doc?.findings === 3, `认定 3 条（实际 ${typo.doc?.findings}，iter-17）`);
   ok(typo.doc?.appendixRows === typo.doc?.evCount, `附录证据清单与证据板一致（${typo.doc?.appendixRows} 行，iter-17）`);
-  ok(!!typo.doc?.qaRestyled && typo.doc.qaRestyled === "本局答记者问", "追问改「本局答记者问」（iter-17）");
+  ok(!!typo.doc?.qaRestyled && typo.doc.qaRestyled === "答记者问", "追问改「答记者问」（iter-17）");
   ok(geo && geo.reportH >= 0.45 * geo.colH, `报告面板占右栏 ≥45%（${geo?.reportH}/${geo?.colH}，iter-7）`);
   ok(geo?.planItemsVisible === 0 && geo?.planCaret === "▸", `完稿后计划屉自动收起（iter-14，${geo?.planItemsVisible}项可见/${geo?.planCaret}）`);
   ok(planOpen.visible >= 3 && planOpen.caret === "▾", `屉点击展开恢复全部计划（iter-14，${planOpen.visible}项）`);

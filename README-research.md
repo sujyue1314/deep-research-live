@@ -1,4 +1,4 @@
-# 现场调查局 · Atria Dawn Preview 深度研究 Demo
+# 探照灯 · Atria Dawn Preview 深度研究 Demo
 
 用于展会现场展示 Atria-Dawn-Preview 的 Agentic 深度研究能力。
 入口：`http://127.0.0.1:5180/research.html`（开发）或 `http://127.0.0.1:3001/research.html`（生产构建）。

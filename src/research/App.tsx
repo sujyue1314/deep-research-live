@@ -189,6 +189,9 @@ export default function App() {
           setPhase(s.phase === "error" ? "error" : s.phase === "done" ? "done" : "running");
           if (s.question) setQuestion(s.question);
           if (typeof s.mock === "boolean") setIsMock(s.mock);
+          // iter-21：回放时恢复会话真实调查模式——否则 strict 会话的公报文号头
+          // 会错显示「快查」（mode 是本地 state，默认 quick）
+          if (isReplay && s.mode) setMode(s.mode);
           // iter-14：计时显示真实用时 —— 完稿用 durationSec；直播分享链接回放用 createdAt 对齐
           if (typeof s.durationSec === "number") setElapsed(s.durationSec);
           else if (s.phase === "running" && typeof s.createdAt === "number")

@@ -1,4 +1,4 @@
-// 调查局前端 API：REST 操作 + SSE 事件流
+// 探照灯前端 API：REST 操作 + SSE 事件流
 export interface REvent {
   type: string;
   [key: string]: any;

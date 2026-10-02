@@ -56,8 +56,8 @@ export function Header({
   return (
     <header className="rb-header">
       <div className="rb-brand">
-        <span className="rb-kicker">现场调查 · 特别报道</span>
-        <h1 className="rb-title">现场调查局</h1>
+        <span className="rb-kicker">现场调查</span>
+        <h1 className="rb-title">探照灯</h1>
         <div className="rb-sub">深度研究直播 · 全过程公开</div>
       </div>
       <div className="rb-hstats">

@@ -1,4 +1,4 @@
-// 调查局 Agent：JSON 协议驱动
+// 探照灯 Agent：JSON 协议驱动
 // 单智能体模式（quick/deep）：调查 → 写报告，全程带机器强制校验
 // 严格模式（strict）：调查员取证 → 质疑者挑战 → 调查员答辩 → 裁决者写报告
 import { chatJsonStream } from "../ai/client.js";
@@ -44,7 +44,7 @@ export function isTimeSensitive(text = "") {
 
 const CORE_PROMPT = (question, budget = null) => {
   const BUDGET_NOTE = budget?.maxSteps ?? "?";
-  return `你是「现场调查局」的调查员 Atria，正在展会现场面向公众做深度调查直播。观众在大屏上实时看着你的每一步思考和操作，请保持专业又生动的调查员口吻。
+  return `你是「探照灯」的调查员 Atria，面向公众做深度调查直播。观众在大屏上实时看着你的每一步思考和操作，请保持专业又生动的调查员口吻。
 
 【当前日期】
 今天是 ${todayStr()}。你的训练记忆不覆盖最近约一年的事件——凡涉及该时段的事实，一律 web_search 取证，不得凭记忆作答；不确定时明确声明数据截止时点。
@@ -673,7 +673,7 @@ export async function runSkeptic(session) {
   const conflictsBrief = session.conflicts.length
     ? session.conflicts.map((c, i) => `冲突${i + 1}：${c.description}`).join("\n")
     : "（未标记冲突）";
-  const user = `你是「现场调查局」的质疑者。调查员刚完成取证，现在由你向证据开炮，观众在大屏上看你的审查过程。
+  const user = `你是「探照灯」的质疑者。调查员刚完成取证，现在由你向证据开炮，观众在大屏上看你的审查过程。
 
 【当前日期】今天是 ${todayStr()}；对「最新动态」类结论的时效性要格外苛刻。
 
@@ -866,7 +866,7 @@ async function runAdjudicator(session, diversity = null) {
         : `系统异源补搜${diversity.tried ? "未找到可用异源来源" : "未能执行（质疑者未给出检索词）"}：不得在报告中宣称未达成的交叉验证，置信度如实判定。`
       : "");
 
-  const user = `你是「现场调查局」的裁决者。调查员与质疑者已完成取证与辩论，现在由你裁决争议并撰写最终报告。
+  const user = `你是「探照灯」的裁决者。调查员与质疑者已完成取证与辩论，现在由你裁决争议并撰写最终报告。
 
 【当前日期】今天是 ${todayStr()}；报告须注明数据时点，涉及「最新」的结论须有近期来源支撑。
 

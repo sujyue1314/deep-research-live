@@ -1,4 +1,4 @@
-// 调查局会话：状态 + 事件总线 + SSE 回放
+// 探照灯会话：状态 + 事件总线 + SSE 回放
 import { randomUUID } from "node:crypto";
 import { EventEmitter } from "node:events";
 

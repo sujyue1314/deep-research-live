@@ -58,7 +58,7 @@ const server = http.createServer(async (req, res) => {
   const url = req.url.split("?")[0];
   const m = req.method;
 
-  // 路由：现场调查局（/api/research/*，含 SSE 与断线回放）
+  // 路由：探照灯（/api/research/*，含 SSE 与断线回放）
   if (await handleResearch(req, res, url, m)) {
     return;
   }
@@ -75,6 +75,6 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, () => {
   console.log(`服务端已启动: http://127.0.0.1:${PORT}`);
-  console.log(`  · 现场调查局（Atria 深度研究 Demo）: http://127.0.0.1:5180/research.html`);
-  console.log(`Atria 模型密钥: ${API_KEY ? "已加载" : "未找到（调查局将以后台演练模式运行；检查 ~/.dsh/.credentials.yaml）"}`);
+  console.log(`  · 探照灯（Atria 深度研究 Demo）: http://127.0.0.1:5180/research.html`);
+  console.log(`Atria 模型密钥: ${API_KEY ? "已加载" : "未找到（探照灯将以后台演练模式运行；检查 ~/.dsh/.credentials.yaml）"}`);
 });

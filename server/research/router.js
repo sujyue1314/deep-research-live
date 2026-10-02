@@ -1,4 +1,4 @@
-// 调查局路由：挂在主 server 上，前缀 /api/research/*
+// 探照灯路由：挂在主 server 上，前缀 /api/research/*
 import { API_KEY, MODEL } from "../config.js";
 import { ResearchSession } from "./session.js";
 import { runResearch } from "./agent.js";

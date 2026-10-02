@@ -133,7 +133,7 @@ export function parseJsonLoose(text) {
 }
 
 /**
- * 兼容导出：chatJsonStream（现场调查局等模块在用）
+ * 兼容导出：chatJsonStream（探照灯等模块在用）
  * 底层走 /responses（有界推理），接受旧参数名 maxTokens / json；
  * 空内容时内部升级重试（low + 大预算 → chat/completions 兜底）。
  */

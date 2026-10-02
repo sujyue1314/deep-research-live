@@ -2,7 +2,7 @@
   "name": "atria-research-demo",
   "version": "0.1.0",
   "private": true,
-  "description": "现场调查局 · Atria 深度研究 Demo (/research.html，见 README-research.md)",
+  "description": "探照灯 · Atria 深度研究 Demo (/research.html，见 README-research.md)",
   "type": "module",
   "scripts": {
     "dev:server": "node server/index.js",
