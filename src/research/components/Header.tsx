@@ -44,9 +44,9 @@ export function Header({
   return (
     <header className="rb-header">
       <div className="rb-brand">
-        <span className="rb-kicker">Atria Dawn Preview · Field Notes</span>
+        <span className="rb-kicker">现场调查 · 特别报道</span>
         <h1 className="rb-title">现场调查局</h1>
-        <div className="rb-sub">深度研究直播 · LIVE DEEP RESEARCH</div>
+        <div className="rb-sub">深度研究直播 · 全过程公开</div>
       </div>
       <div className="rb-hstats">
         <div className="rb-stat">

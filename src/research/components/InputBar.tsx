@@ -64,12 +64,12 @@ export function InputBar({
           maxLength={200}
         />
         {!hasKey && (
-          <span className="ib-note" title="服务器未配置 Atria API 密钥">
+          <span className="ib-note" title="服务器未配置模型密钥">
             无密钥 · 将运行预制演练
           </span>
         )}
         {hasKey && (
-          <label className="ib-mock" title="使用预录轨迹，不消耗 API">
+          <label className="ib-mock" title="使用预录轨迹，不调用模型">
             <input
               type="checkbox"
               checked={forceMock}

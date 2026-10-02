@@ -40,12 +40,12 @@ export function TrajectoryStream({ entries, phase }: Props) {
   return (
     <div className="rb-panel rb-traj" ref={ref}>
       <div className="rb-panel-head">
-        <span>调查直播 · Live</span>
+        <span>调查直播</span>
         <span className="rb-panel-hint">{phase === "running" ? "思考与操作实时流出" : "等待开始"}</span>
       </div>
       <div className="rb-traj-list">
         {entries.length === 0 && (
-          <div className="rb-empty">输入研究问题后，Atria 的每一步思考、搜索与取证都会流到这里。</div>
+          <div className="rb-empty">输入研究问题后，调查员的每一步思考、搜索与取证都会流到这里。</div>
         )}
         {entries.map((e) => {
           if (e.kind === "thought") {
@@ -140,7 +140,7 @@ export function TrajectoryStream({ entries, phase }: Props) {
           if (e.kind === "conflict") {
             return (
               <div key={e.key} className="tr-conflict">
-                <div className="tr-c-head">分歧 · Dispute</div>
+                <div className="tr-c-head">分歧</div>
                 <div className="tr-c-body">{e.text}</div>
                 <div className="tr-c-urls mono">
                   {(e.urls || []).map((u, i) => (

@@ -356,6 +356,20 @@ async function verifyUi() {
     return { colH: Math.round(cr.height), reportH: Math.round(rr.height) };
   });
   log("   几何:", JSON.stringify(geo));
+  // 无英文残留探针（iter-8）：固定界面标签不得含拉丁字母
+  const latinFree = await page.evaluate(() => {
+    const sels = [
+      ".rb-kicker",
+      ".rb-sub",
+      ".rb-title",
+      ".rb-panel-head > span",
+      ".rb-online-tag",
+      ".rb-qa-head > span",
+    ];
+    return sels
+      .map((s) => [...document.querySelectorAll(s)].map((el) => el.textContent).join(" "))
+      .join(" ");
+  });
   await page.screenshot({ path: path.join(SHOTS, "verify-final.png") });
 
   await browser.close();
@@ -375,6 +389,7 @@ async function verifyUi() {
   ok(typo.dc, "首字下沉候选（C3）");
   ok(typo.thin > 0, `中英文 thin space 生效（${typo.thin} 处，C3）`);
   ok(geo && geo.reportH >= 0.45 * geo.colH, `报告面板占右栏 ≥45%（${geo?.reportH}/${geo?.colH}，iter-7）`);
+  ok(!/[A-Za-z]/.test(latinFree), "界面标签无英文残留（iter-8）");
   ok(errors.filter((e) => !e.includes("404")).length === 0, "无页面错误（favicon 404 除外）");
   fail.forEach((f) => log(" ", f));
   log(fail.length ? "ui: FAIL" : "ui: PASS");

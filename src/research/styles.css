@@ -64,8 +64,8 @@ body {
 }
 
 .rb-kicker {
-  font-size: 10.5px;
-  letter-spacing: 3px;
+  font-size: 11px;
+  letter-spacing: 4px;
   color: var(--clay-deep);
   text-transform: uppercase;
   font-weight: 600;
@@ -84,7 +84,7 @@ body {
 .rb-sub {
   font-size: 11.5px;
   color: var(--ink-faint);
-  letter-spacing: 0.5px;
+  letter-spacing: 1.5px;
 }
 
 .rb-hstats {
@@ -843,15 +843,17 @@ body {
 
 .rp-no {
   font-family: var(--serif);
-  font-size: 14px;
+  font-size: 20px;
+  line-height: 1;
   background: none;
   color: var(--clay-deep);
   padding: 0;
 }
 
+/* C3 收尾印记之后的报告正文：杂志风加气（行距 2.05、字号 14） */
 .rp-md {
-  font-size: 13.5px;
-  line-height: 1.95;
+  font-size: 14px;
+  line-height: 2.05;
   color: var(--ink);
 }
 

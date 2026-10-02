@@ -61,7 +61,7 @@ export function EvidenceBoard({
   return (
     <div className="rb-panel rb-board">
       <div className="rb-panel-head">
-        <span>证据 · Evidence</span>
+        <span>证据</span>
         <span className="rb-panel-hint">
           {evidence.length ? `${evidence.length} 条已固定 · 红框 = 来源冲突` : "等待取证"}
         </span>
@@ -72,7 +72,7 @@ export function EvidenceBoard({
         </div>
         {conflicts.map((c) => (
           <div className="rb-conflict" key={c.id}>
-            <div className="tr-c-head">分歧 · Dispute</div>
+            <div className="tr-c-head">分歧</div>
             <div className="tr-c-body">{c.description}</div>
             <div className="tr-c-urls mono">
               {c.urls.map((u, i) => (
@@ -86,7 +86,7 @@ export function EvidenceBoard({
         <div className="rb-cards">
           {evidence.length === 0 && conflicts.length === 0 && (
             <div className="rb-empty" style={{ gridColumn: "1 / -2" }}>
-              Atria 固定的证据会列在这张参考文献表上，每条都可点开原始来源。
+              调查员固定的证据会列在这张参考文献表上，每条都可点开原始来源。
             </div>
           )}
           {evidence.map((ev) => (
