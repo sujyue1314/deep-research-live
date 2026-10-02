@@ -299,7 +299,11 @@ body {
 /* ---------- iter-17：完稿舞台 ----------
    文书自足：报告=裁决段+认定+分歧+完稿印+附录证据清单，
    舞台单栏居中，不再需要证据侧栏（核查链在文内闭合） */
-.rb-grid-stage-report {
+/* iter-19：特异性必须 0,2,0 —— 否则与下方 @media(max-width:1280px/1100px) 里的
+   .rb-grid（同为 0,1,0）平手，媒体查询后定义而胜出，901–1280px 区间三栏轨道
+   残留（左/中栏 display:none 但 240px/420px 轨道仍在），报告被自动放进 240px
+   第一轨道——实测文书宽 232px、偏左 992px */
+.rb-grid.rb-grid-stage-report {
   grid-template-columns: minmax(0, 1fr);
 }
 
