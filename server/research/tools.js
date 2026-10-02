@@ -2,6 +2,30 @@
 // 搜索提供者优先级：TAVILY_API_KEY > SERPER_API_KEY > DuckDuckGo HTML > Bing HTML
 // 全部不依赖外部 npm 包，纯 fetch + 正则解析
 
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+/* ---------- 环境变量兜底（iter-10） ---------- */
+
+// 进程环境变量缺失时，从仓库根 .env 读取（已 gitignore，仅本机生效）
+// 防止「终端环境陈旧 → 检索通道全灭 → 0 节报告」类故障
+(function loadDotEnv() {
+  const p = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", ".env");
+  if (!fs.existsSync(p)) return;
+  try {
+    for (const line of fs.readFileSync(p, "utf-8").split(/\r?\n/)) {
+      const m = line.match(/^\s*([A-Z_][A-Z0-9_]*)\s*=\s*(\S.*)\s*$/);
+      if (!m) continue;
+      if (process.env[m[1]] === undefined) process.env[m[1]] = m[2];
+    }
+  } catch {}
+})();
+
+console.log(
+  `[research.tools] 检索通道: tavily=${process.env.TAVILY_API_KEY ? "有密钥" : "无密钥"} serper=${process.env.SERPER_API_KEY ? "有密钥" : "无密钥"}`,
+);
+
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
 const FETCH_TIMEOUT = 15000;

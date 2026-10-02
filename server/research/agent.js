@@ -260,6 +260,19 @@ async function executeAction(session, action, opts = {}) {
       });
       session.stats.providers[provider] = (session.stats.providers[provider] || 0) + 1;
       session.emit({ type: "search-results", query, results, provider });
+      // 通道健康守卫（iter-10）：连续全空检索 → 广播醒目通告
+      // （此前发生过：进程无 TAVILY 密钥 → 8 次全空 → 烧光步数才知道）
+      if (results.length === 0) {
+        session._emptyStreak = (session._emptyStreak || 0) + 1;
+        if (session._emptyStreak === 3 || session._emptyStreak === 6) {
+          session.emit({
+            type: "notice",
+            text: `【通道异常】检索已连续 ${session._emptyStreak} 次返回空结果（来源：${provider}）——疑似搜索密钥缺失或网络异常，请查看服务器启动日志的通道武装状态。`,
+          });
+        }
+      } else {
+        session._emptyStreak = 0;
+      }
       const lines = results.map(
         (r, i) => `${i + 1}. ${r.title}\n   ${r.url}\n   ${r.snippet || "（无摘要）"}`,
       );
