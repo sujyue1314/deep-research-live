@@ -42,7 +42,9 @@ export function isTimeSensitive(text = "") {
   return false;
 }
 
-const CORE_PROMPT = (question) => `你是「现场调查局」的调查员 Atria，正在展会现场面向公众做深度调查直播。观众在大屏上实时看着你的每一步思考和操作，请保持专业又生动的调查员口吻。
+const CORE_PROMPT = (question, budget = null) => {
+  const BUDGET_NOTE = budget?.maxSteps ?? "?";
+  return `你是「现场调查局」的调查员 Atria，正在展会现场面向公众做深度调查直播。观众在大屏上实时看着你的每一步思考和操作，请保持专业又生动的调查员口吻。
 
 【当前日期】
 今天是 ${todayStr()}。你的训练记忆不覆盖最近约一年的事件——凡涉及该时段的事实，一律 web_search 取证，不得凭记忆作答；不确定时明确声明数据截止时点。
@@ -70,6 +72,11 @@ ${question}
 6. write_section — 写报告章节。参数：{"heading": "章节标题", "markdown": "正文，用 [数字] 标注引用（数字对应第 n 个 save_evidence 证据的编号）", "citations": ["url", ...]}
 7. finish — 完成。参数：{"one_line": "一句话核心结论"}
 
+【步数预算与写作纪律（重要）】
+本次调查共约 ${BUDGET_NOTE} 步。须知：证据不必穷尽，报告必须产出。
+- 过半时仍未写任何章节（write_section）就是失败节奏——证据足以支撑结论时立即写，边写边补证。
+- 每节正文至少 2 条引用；写满 2-3 节即可 finish，不要把步数花在重复搜索上。
+
 【信息准确性铁律】
 - 所有 url 必须来自 web_search / open_page 返回的结果，严禁编造地址；引用编号 [n] 不得超过已固定证据的数量。
 - save_evidence 的 quote 必须是来源页面的原文逐字摘录（系统会机器校验，编造的引文会被拒收）。
@@ -86,6 +93,7 @@ ${question}
 - 来源不完美是常态：先取证、再分级；权威源不够就用一般源并明确标注，不要因为无法做到完美而停摆。
 
 每步结束后，系统会把工具执行结果以【系统】消息返回给你，继续你的下一步。`;
+};
 
 const STRICT_PROMPT_SUFFIX = `
 【当前为严格模式】你只负责取证与答辩，不要调用 write_section。证据收集充分（或预算耗尽）后立即调用 finish 结束调查；报告将由裁决者（另一智能体）基于你的证据与辩论撰写。质疑者随后会挑战你的证据，请届时逐条回应。`;
@@ -487,7 +495,7 @@ async function investigatorLoop(session, opts = {}) {
   const messages = opts.messages || [
     {
       role: "system",
-      content: CORE_PROMPT(session.question) + (opts.strictSuffix ? STRICT_PROMPT_SUFFIX : ""),
+      content: CORE_PROMPT(session.question, budget) + (opts.strictSuffix ? STRICT_PROMPT_SUFFIX : ""),
     },
     {
       role: "user",
@@ -508,6 +516,17 @@ async function investigatorLoop(session, opts = {}) {
     session.stats.steps += 1;
     const stepNo = session.stats.steps;
     session.emit({ type: "step", n: stepNo, voice: "investigator" });
+
+    // 写作节奏守卫（iter-12）：步数过 60% 仍无章节，插入系统催稿
+    // （此前 quick 模式 26 步全部搜/读、一节没写就预算耗尽）
+    if (session.sections.length === 0 && stepNo === Math.ceil(stopSteps * 0.6)) {
+      session.emit({ type: "notice", text: `步数已过六成、尚无报告章节——系统催稿：转向 write_section` });
+      messages.push({
+        role: "user",
+        content:
+          "【系统催稿】步数预算已用约六成，但还没有 write_section 产出。现在请依据已固定的证据立即撰写第一节报告（write_section），后续按剩余步数决定是否补写与 finish。不要再搜索。",
+      });
+    }
 
     // 流式调用：原始 JSON 块直接转发，前端实时渲染 thought
     let result;
@@ -562,9 +581,9 @@ async function investigatorLoop(session, opts = {}) {
       messages.push({ role: "user", content: `【系统】上一步执行失败：${r.msg}` });
     }
 
-    // 预算耗尽：最多再给 3 步收尾
+    // 预算耗尽：最多再给 3 步收尾（任一预算用尽即触发——原先 && 会因差一页而漏网）
     const budgetExhausted =
-      session.stats.searches >= budget.maxSearches &&
+      session.stats.searches >= budget.maxSearches ||
       session.stats.pages >= budget.maxPages;
     if (budgetExhausted) {
       forcedFinishSteps += 1;
@@ -910,7 +929,9 @@ sections 不超过 ${limits.maxSections} 个。`;
 async function finalize(session) {
   if (!session.oneLine) {
     const fallback = session.evidence.length
-      ? `调查完成：收集 ${session.evidence.length} 条证据，形成 ${session.sections.length} 节报告。`
+      ? session.sections.length
+        ? `调查完成：收集 ${session.evidence.length} 条证据，形成 ${session.sections.length} 节报告。`
+        : `调查因步数预算耗尽提前结束：固定了 ${session.evidence.length} 条证据，但未能形成报告章节（可回放查看已固定证据）。`
       : "调查因预算/中断提前结束，未能形成完整报告。";
     session.oneLine = fallback;
     session.emit({ type: "one-line", text: fallback });
