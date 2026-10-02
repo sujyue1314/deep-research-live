@@ -5,6 +5,7 @@ interface Props {
   sections: Section[];
   oneLine: string | null;
   phase: string;
+  planSections: number; // iter-15：取证期骨架里显示计划节数
   replay: boolean; // iter-14：回放（?session= 打开）时 questions 到达不抢滚动
   evidenceCount: number;
   onCiteClick: (n: number) => void;
@@ -69,7 +70,7 @@ function renderLine(
   );
 }
 
-export function ReportView({ sections, oneLine, phase, replay, onCiteClick, citeFocus, qa, onAsk }: Props) {
+export function ReportView({ sections, oneLine, phase, planSections, replay, onCiteClick, citeFocus, qa, onAsk }: Props) {
   const writing = sections.some((s) => s.streaming);
   const bodyRef = useRef<HTMLDivElement | null>(null);
   const [qInput, setQInput] = useState("");
@@ -124,7 +125,21 @@ export function ReportView({ sections, oneLine, phase, replay, onCiteClick, cite
             <span className={dcEligible ? "rp-dc" : ""}>{typograf(oneLine)}</span>
           </div>
         )}
-        {sections.length === 0 && !oneLine && (
+        {sections.length === 0 && !oneLine && phase === "running" && (
+          // iter-15：取证期报告面板的骨架（带预期），取代原先只有顶部一条提示、
+          // 下方整片空白的空态
+          <div className="rp-skel">
+            <div className="rp-skel-head">取证中 · 完稿后在此撰写报告（共 {planSections} 节计划）</div>
+            {[1, 2, 3].map((i) => (
+              <div className="rp-skel-sec" key={i}>
+                <div className="ev-skel-line ev-skel-w40" />
+                <div className="ev-skel-line" />
+                <div className="ev-skel-line ev-skel-w80" />
+              </div>
+            ))}
+          </div>
+        )}
+        {sections.length === 0 && !oneLine && phase !== "running" && (
           <div className="rb-empty">
             证据收集完成后，调查员会在这里撰写带引用编号的结论报告。点击报告中的 [n] 可定位到证据板上对应的原始来源。
           </div>

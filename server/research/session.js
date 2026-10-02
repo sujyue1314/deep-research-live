@@ -208,6 +208,15 @@ export class ResearchSession {
     return this._aborted;
   }
 
+  /** 消费停止信号并重置（iter-15：旧代码直接 session.aborted = false ——
+      给只读 getter 赋值在 ESM 严格模式必抛 TypeError；超时/手动停止会
+      把会话打成 error 而非按已有证据诚实收尾） */
+  consumeAbort() {
+    const was = this._aborted;
+    this._aborted = false;
+    return was;
+  }
+
   /** 收尾：固化最终状态 */
   finish(reason = "done") {
     if (this.closed) return;

@@ -413,6 +413,30 @@ async function verifyUi() {
   );
   await page.screenshot({ path: path.join(SHOTS, "verify-final.png") });
 
+  // iter-15 交互探针（须在 browser.close() 之前：涉及真实点击与取值）
+  const it15 = await page.evaluate(() => ({
+    stageOn: document.querySelector(".rb-grid")?.className.includes("rb-grid-stage-report") ?? false,
+    arrowBtns: document.querySelectorAll(".ib-scroll-btn").length,
+    stageSwitch: !!document.querySelector(".rb-stage-switch"),
+  }));
+  log("   iter-15:", JSON.stringify(it15));
+  await page.click(".rb-stage-switch .ib-seg:last-of-type").catch(() => {});
+  await sleep(500);
+  const processGear = await page.evaluate(() => {
+    const l = document.querySelector(".rb-traj-list");
+    return {
+      stageOff: !document.querySelector(".rb-grid")?.className.includes("rb-grid-stage-report"),
+      trajNoHOverflow: l ? l.scrollWidth <= l.clientWidth + 2 : null,
+    };
+  });
+  // 箭头滚动是 smooth 动画 —— 点击后等动画再读
+  const arrowBefore = await page.evaluate(() => document.querySelector(".ib-presets")?.scrollLeft ?? 0);
+  await page.evaluate(() => [...document.querySelectorAll(".ib-scroll-btn")].pop()?.click());
+  await sleep(1000);
+  const arrowAfter = await page.evaluate(() => document.querySelector(".ib-presets")?.scrollLeft ?? 0);
+  processGear.arrowsWork = { before: arrowBefore, after: arrowAfter };
+  log("   过程视图:", JSON.stringify(processGear));
+
   await browser.close();
   log("页面错误:", errors.length ? errors.slice(0, 3) : "无");
 
@@ -433,6 +457,14 @@ async function verifyUi() {
   ok(geo?.planItemsVisible === 0 && geo?.planCaret === "▸", `完稿后计划屉自动收起（iter-14，${geo?.planItemsVisible}项可见/${geo?.planCaret}）`);
   ok(planOpen.visible >= 3 && planOpen.caret === "▾", `屉点击展开恢复全部计划（iter-14，${planOpen.visible}项）`);
   ok(geo?.trajAtBottom === true, "直播流完稿时贴底（iter-14 修复跟随目标）");
+
+  ok(it15.stageSwitch && it15.stageOn, "完稿自动进入报告舞台（iter-15）");
+  ok(processGear.stageOff, "舞台可切回全过程（iter-15）");
+  ok(processGear.trajNoHOverflow === true, "时间线无横向溢出（iter-15）");
+  ok(
+    processGear.arrowsWork && processGear.arrowsWork.after > processGear.arrowsWork.before,
+    `灵感条箭头可滚动（${processGear.arrowsWork?.before}→${processGear.arrowsWork?.after}，iter-15）`,
+  );
   ok(
     !!trunc && /[。！？）】”]/.test(trunc?.tail?.slice(-1) || ""),
     `末节完整收尾（…${trunc?.tail}，iter-11）`,
@@ -583,6 +615,24 @@ async function verifyShare() {
   ok(replay.reportScrollTop === 0 && replay.oneLineY !== null && replay.oneLineY > 0, `回放定位在报告顶部（scrollTop=${replay.reportScrollTop}，结论 y=${replay.oneLineY}，iter-14）`);
   ok(replay.trajPinned === true, "回放轨迹贴底（iter-14）");
   ok(replay.timerVal && replay.timerVal !== "00:00", `回放显示真实用时（${replay.timerVal}，iter-14）`);
+
+  // iter-15：回放默认进入「报告舞台」，切回全过程后轨迹应贴底且无横向溢出
+  const stageOn = await page.evaluate(
+    () => document.querySelector(".rb-grid")?.className.includes("rb-grid-stage-report") ?? false,
+  );
+  ok(stageOn, "回放默认报告舞台（iter-15）");
+  await page.click(".rb-stage-switch .ib-seg:last-of-type").catch(() => {});
+  await sleep(500);
+  const processView = await page.evaluate(() => {
+    const l = document.querySelector(".rb-traj-list");
+    return {
+      trajPinned: l ? l.scrollTop + l.clientHeight >= l.scrollHeight - 64 : null,
+      noHOverflow: l ? l.scrollWidth <= l.clientWidth + 2 : null,
+      visible: l ? l.clientWidth > 0 : null,
+    };
+  });
+  ok(!!processView.visible && !!processView.trajPinned, "全过程视图轨迹贴底");
+  ok(processView.noHOverflow === true, "时间线无横向溢出（URL 型标题不再顶宽，iter-15）");
 
   console.log("5) 分享链接构造（data-share）");
   // 注意：headless 下真实 Clipboard API 会锁死渲染进程，剪贴板交互留给真实浏览器手动验证；

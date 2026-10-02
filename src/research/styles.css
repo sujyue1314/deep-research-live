@@ -296,6 +296,47 @@ body {
   max-height: 34%;
 }
 
+/* ---------- iter-15：完稿舞台 ----------
+   直播期保持三栏「全过程公开」；完稿瞬间报告接管中栏大阅读区，
+   证据板转窄参考栏 —— 报告是这场戏的主角，不再住在最小的格子里 */
+.rb-grid-stage-report {
+  grid-template-columns: minmax(0, 1fr) 380px;
+}
+
+.rb-grid-stage-report .rb-col-left {
+  display: none;
+}
+
+.rb-grid-stage-report .rb-col-right {
+  order: 1; /* 报告（含计划屉）= 主舞台，靠左 */
+  border-left: none;
+  border-right: 1px solid var(--line);
+  padding-left: 28px;
+  padding-right: 28px;
+}
+
+.rb-grid-stage-report .rb-col-center {
+  order: 2; /* 证据板 = 右参考栏 */
+}
+
+.rb-grid-stage-report .rb-col-right .rb-report {
+  max-width: 38em;
+  margin: 0 auto; /* 杂志栏宽，居中 */
+}
+
+.rb-stage-switch {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.rb-stage-switch .ib-seg {
+  padding: 8px 14px;
+  font-size: 12px;
+}
+
 /* 表头钉住，列表内部滚动 */
 .rb-col-right .rb-panel:not(.rb-report) .rb-plan-list,
 .rb-col-right .rb-panel:not(.rb-report) .rb-principles-list {
@@ -351,6 +392,9 @@ body {
 .rb-traj-list {
   flex: 1;
   overflow-y: auto;
+  /* iter-15：纵向时间线禁止横向滚动 —— URL 型标题（word-break:normal 的拉丁串）
+     曾把 scrollWidth 顶到 327px（栏宽 237px），拖横滚滑块后右侧全空白 */
+  overflow-x: hidden;
   padding: 18px 0 18px 18px;
   display: flex;
   flex-direction: column;
@@ -497,6 +541,12 @@ body {
   gap: 10px;
   padding: 7px 0;
   border-top: 1px solid var(--line);
+  min-width: 0;
+}
+
+.tr-r-item > div {
+  min-width: 0; /* iter-15：同 tr-page，防止拉丁长串顶宽 */
+  flex: 1;
 }
 
 .tr-r-no {
@@ -511,6 +561,8 @@ body {
   font-size: 12.5px;
   color: var(--ink);
   line-height: 1.5;
+  word-break: break-all; /* iter-15 */
+  overflow-wrap: anywhere;
 }
 
 .tr-r-url {
@@ -523,6 +575,7 @@ body {
   display: flex;
   gap: 12px;
   padding-top: 4px;
+  min-width: 0; /* iter-15：flex 子项可收缩，内部长 URL 不再把列表顶宽 */
 }
 
 .tr-p-icon {
@@ -531,6 +584,7 @@ body {
 
 .tr-p-body {
   flex: 1;
+  min-width: 0;
 }
 
 .tr-p-title {
@@ -539,6 +593,10 @@ body {
   font-weight: 700;
   color: var(--ink);
   line-height: 1.4;
+  /* iter-15：页面标题可能就是裸 URL（抓取不到标题时的诚实回退），
+     拉丁串不可断行会把时间线顶宽；这里与结果标题一并允许断行 */
+  word-break: break-all;
+  overflow-wrap: anywhere;
 }
 
 .tr-p-snip {
@@ -581,6 +639,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  word-break: break-all; /* iter-15：冲突来源 URL 不可断行同样顶宽 */
 }
 
 /* ---------- 计划 ---------- */
@@ -662,6 +721,67 @@ body {
 }
 
 /* ---------- 证据板（参考文献卡） ---------- */
+
+/* iter-15：取证期骨架占位 —— 给「即将到达」的内容一个形状 */
+.ev-skel {
+  border: 1px dashed var(--line);
+  padding: 20px 18px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  min-height: 120px;
+}
+
+.ev-skel-line {
+  height: 10px;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--line) 0,
+    var(--line) 8px,
+    transparent 8px,
+    transparent 14px
+  );
+  border-radius: 2px;
+}
+
+.ev-skel-w40 {
+  width: 40%;
+}
+
+.ev-skel-w70 {
+  width: 70%;
+}
+
+.ev-skel-w80 {
+  width: 80%;
+}
+
+.ev-skel-tag {
+  margin-top: auto;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  color: var(--ink-faint);
+}
+
+.rp-skel {
+  padding: 8px 0 24px;
+}
+
+.rp-skel-head {
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: var(--clay-deep);
+  margin-bottom: 18px;
+}
+
+.rp-skel-sec {
+  border: 1px dashed var(--line);
+  padding: 18px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 14px;
+}
 
 .rb-board-body {
   flex: 1;
@@ -949,12 +1069,18 @@ body {
   gap: 10px;
 }
 
-/* iter-14：预设词单行 + 横向滚动（替原换行两行方案：输入栏 151→112px，
-   省出的高度全给报告；窄屏沿用同一行规则，chip 随滚可达） */
+/* iter-15：预设单行横滚 + 两侧箭头按钮（iter-14 的隐藏滚动条方案使
+   ≤1520px 宽度下后方 chip 仅 Shift+滚轮可达；箭头给出可见且可点的入口） */
+.ib-presets-wrap {
+  margin-bottom: 10px;
+}
+
 .ib-presets {
+  display: flex; /* iter-15 修复：ib-row 移到 wrap 后这里必须自持 flex，否则 chip 换行 */
+  flex: 1;
+  min-width: 0;
   flex-wrap: nowrap;
   overflow-x: auto;
-  margin-bottom: 10px;
   scrollbar-width: none;
 }
 
@@ -966,11 +1092,33 @@ body {
   flex-shrink: 0;
 }
 
-/* 随机灵感吸右缘：预设横滚时也不被藏到滚动尽头 */
-.ib-presets .ib-dice {
-  position: sticky;
-  right: 0;
-  background: var(--bg);
+.ib-scroll-btn {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink-dim);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: all 0.15s;
+}
+
+.ib-scroll-btn:hover:not(:disabled) {
+  border-color: var(--clay-deep);
+  color: var(--clay-deep);
+  background: var(--clay-soft);
+}
+
+.ib-scroll-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
 }
 
 .ib-chip {
@@ -1452,6 +1600,14 @@ body {
   .ib-input {
     min-width: 0;
     flex: 1 1 240px;
+  }
+  /* iter-15：单栏流里报告舞台同样置顶（order 已继承桌面规则：
+     报告 order:1 在前、证据 order:2 随后） */
+  .rb-grid-stage-report .rb-col-right {
+    border-right: none;
+    padding: 0 20px 20px;
+    max-width: 38em;
+    margin: 0 auto;
   }
 }
 

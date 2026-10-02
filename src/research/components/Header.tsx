@@ -9,6 +9,10 @@ interface Props {
   onStop: () => void;
   sessionId: string | null;
   onToast?: (t: string) => void;
+  // iter-15：完稿舞台切换（报告主舞台 ↔ 三栏全过程）
+  stageable: boolean;
+  stageView: "report" | "process";
+  onStageChange: (v: "report" | "process") => void;
 }
 
 const fmtTime = (s: number) => {
@@ -26,6 +30,9 @@ export function Header({
   onStop,
   sessionId,
   onToast,
+  stageable,
+  stageView,
+  onStageChange,
 }: Props) {
   const shareUrl = sessionId ? `${location.origin}${location.pathname}?session=${sessionId}` : null;
   const shareLink = () => {
@@ -86,6 +93,29 @@ export function Header({
         <button className="rb-btn rb-btn-stop" onClick={onStop}>
           停止调查
         </button>
+      )}
+      {stageable && (
+        // iter-15：完稿后阅读模式切换 —— 报告主舞台（默认）/ 回到三栏全过程
+        <div className="rb-stage-switch" role="tablist" aria-label="阅读布局">
+          <button
+            className={`ib-seg${stageView === "report" ? " on" : ""}`}
+            role="tab"
+            aria-selected={stageView === "report"}
+            onClick={() => onStageChange("report")}
+            title="报告接管主阅读区"
+          >
+            报告
+          </button>
+          <button
+            className={`ib-seg${stageView === "process" ? " on" : ""}`}
+            role="tab"
+            aria-selected={stageView === "process"}
+            onClick={() => onStageChange("process")}
+            title="回到三栏全过程"
+          >
+            全过程
+          </button>
+        </div>
       )}
       {sessionId && (
         <button

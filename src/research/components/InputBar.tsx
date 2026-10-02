@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import type { Phase } from "../App";
 
 interface Props {
@@ -32,22 +33,49 @@ export function InputBar({
   setForceMock,
 }: Props) {
   const running = phase === "running";
+  const presetRef = useRef<HTMLDivElement | null>(null);
+  // iter-15：预设单行横滚的显式翻页（滚轮不横滚、滚动条不可见时，箭头是唯一可达入口）
+  const scrollPresets = (dir: number) => {
+    const el = presetRef.current;
+    if (!el) return;
+    el.scrollBy({ left: dir * Math.max(240, el.clientWidth * 0.6), behavior: "smooth" });
+  };
   return (
     <div className="rb-inputbar">
-      <div className="ib-row ib-presets">
-        {presets.map((p) => (
-          <button
-            key={p}
-            className="ib-chip"
-            disabled={running}
-            onClick={() => setValue(p)}
-            title="点击填入输入框"
-          >
-            {p}
+      <div className="ib-row ib-presets-wrap">
+        <button
+          className="ib-scroll-btn"
+          onClick={() => scrollPresets(-1)}
+          disabled={running}
+          title="前面的灵感"
+          aria-label="上一个灵感"
+        >
+          ‹
+        </button>
+        <div className="ib-presets" ref={presetRef}>
+          {presets.map((p) => (
+            <button
+              key={p}
+              className="ib-chip"
+              disabled={running}
+              onClick={() => setValue(p)}
+              title="点击填入输入框"
+            >
+              {p}
+            </button>
+          ))}
+          <button className="ib-chip ib-dice" disabled={running} onClick={onRandom}>
+            随机灵感
           </button>
-        ))}
-        <button className="ib-chip ib-dice" disabled={running} onClick={onRandom}>
-          随机灵感
+        </div>
+        <button
+          className="ib-scroll-btn"
+          onClick={() => scrollPresets(1)}
+          disabled={running}
+          title="更多灵感"
+          aria-label="下一个灵感"
+        >
+          ›
         </button>
       </div>
       <div className="ib-row ib-main">

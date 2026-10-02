@@ -69,7 +69,7 @@ ${question}
 3. open_page — 阅读网页正文。参数：{"url": "https://..."}（url 必须来自搜索结果）
 4. save_evidence — 固定证据卡片。参数：{"url", "title", "quote": "必须从原文逐字摘录的关键句（省略可用……）", "note": "这条证据说明了什么"}
 5. note_conflict — 标记来源冲突：这是直播的关键时刻，请向观众清楚解释两方说法与你的裁决思路。参数：{"urls": ["urlA", "urlB"], "description": "冲突描述"}
-6. write_section — 写报告章节。参数：{"heading": "章节标题", "markdown": "正文，用 [数字] 标注引用（数字对应第 n 个 save_evidence 证据的编号）", "citations": ["url", ...]}
+6. write_section — 写报告章节。参数：{"heading": "章节标题", "markdown": "正文，用 [数字] 标注引用（数字对应第 n 个 save_evidence 证据的编号）", "plan": "必填：本节回答调查计划（update_plan 的 subquestions）的第几个子问题（1 起）", "citations": ["url", ...]}
 7. finish — 完成。参数：{"one_line": "一句话核心结论"}
 
 【步数预算与写作纪律（重要）】
@@ -427,6 +427,19 @@ async function executeAction(session, action, opts = {}) {
       const index = session.sections.length + 1;
       session.sections.push({ index, heading, markdown, citations, crossVerified });
       relaySection(session, index, heading, markdown, crossVerified ? "高" : "中", crossVerified);
+      // iter-15：章节落地推进计划项 —— 优先采信 write_section 里声明的 plan 编号
+      // （机器可校验：编号有效即标完成）。
+      // 未声明时只推进到「进行中」：文本词面匹配跨会话验证不可靠（假阳/假阴都有），
+      // 机器不知道这节回答了哪个子问题，就不假装知道（抽屉如实显示三态计数）
+      {
+        const idx = Number(action.plan) - 1;
+        if (Number.isInteger(idx) && session.plan[idx] && session.plan[idx].status !== "done") {
+          session.plan[idx].status = "done";
+          session.emit({ type: "plan", items: session.plan });
+        } else {
+          touchPlan(session, heading, "active");
+        }
+      }
       return {
         ok: true,
         obs: `【系统】第 ${index} 节「${heading}」已写入报告（${crossVerified ? "≥2 个独立来源，交叉验证通过" : `仅来自单一域名（${hosts}），置信度只能为中`}）。${
@@ -509,8 +522,7 @@ async function investigatorLoop(session, opts = {}) {
 
   while (session.stats.steps < stopSteps) {
     if (session.aborted) {
-      session.aborted = false;
-      return "aborted";
+      return "aborted"; // 信号由调度层 consumeAbort 消费后诚实收尾
     }
 
     session.stats.steps += 1;
@@ -847,7 +859,7 @@ sections 不超过 ${limits.maxSections} 个。`;
           {
             role: "system",
             content:
-              "你是严谨的裁决编辑，输出必须是 JSON：{\"thought\": \"...\", \"verdicts\": [{\"text\": \"...\"}], \"sections\": [{\"heading\": \"...\", \"markdown\": \"...\", \"confidence\": \"高|中|低\"}], \"one_line\": \"...\"}。所有引用必须对应证据清单编号。",
+              "你是严谨的裁决编辑，输出必须是 JSON：{\"thought\": \"...\", \"verdicts\": [{\"text\": \"...\"}], \"sections\": [{\"heading\": \"...\", \"markdown\": \"...\", \"confidence\": \"高|中|低\", \"plan\": 本节回答调查计划第几个子问题（1 起）}], \"one_line\": \"...\"}。所有引用必须对应证据清单编号。",
           },
           { role: "user", content: user },
         ],
@@ -914,6 +926,16 @@ sections 不超过 ${limits.maxSections} 个。`;
     const index = session.sections.length + 1;
     session.sections.push({ index, heading, markdown, citations: [], crossVerified });
     relaySection(session, index, heading, markdown, confidence, crossVerified);
+    // iter-15：裁决者章节同样推进计划项（声明编号优先，词面匹配兜底）
+    {
+      const idx = Number(s?.plan) - 1;
+      if (Number.isInteger(idx) && session.plan[idx] && session.plan[idx].status !== "done") {
+        session.plan[idx].status = "done";
+        session.emit({ type: "plan", items: session.plan });
+      } else {
+        touchPlan(session, heading, "done");
+      }
+    }
   }
 
   const oneLine = String(parsed.one_line || "").trim().slice(0, 200);
@@ -963,13 +985,13 @@ export async function runResearch(session) {
       });
       if (r === "error") return;
       if (session.aborted) {
-        session.aborted = false;
+        session.consumeAbort();
         return finalize(session);
       }
 
       const skeptic = await runSkeptic(session);
       if (session.aborted) {
-        session.aborted = false;
+        session.consumeAbort();
         return finalize(session);
       }
 
@@ -1013,7 +1035,7 @@ export async function runResearch(session) {
       }
 
       if (session.aborted) {
-        session.aborted = false;
+        session.consumeAbort();
         return finalize(session);
       }
       await runAdjudicator(session, skeptic?.diversity || null);

@@ -107,6 +107,12 @@ export default function App() {
   const [highlightEv, setHighlightEv] = useState<number | null>(null);
   const [citeFocus, setCiteFocus] = useState<number | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  // iter-15：完稿舞台——报告接管中栏大阅读区，「全过程」可切回三栏直播布局
+  const [stageView, setStageView] = useState<"report" | "process">("process");
+  const PLAN_SECTIONS: Record<string, number> = { quick: 4, deep: 7, strict: 5 };
+  const stageable =
+    (phase === "done" || phase === "error") && (sections.length > 0 || !!oneLine);
+  const stageClass = stageable && stageView === "report" ? " rb-grid-stage-report" : "";
 
   const stepRef = useRef(0);
   const voiceRef = useRef<Voice>("investigator");
@@ -409,6 +415,11 @@ export default function App() {
     return () => clearInterval(t);
   }, [phase]);
 
+  /* ---------- iter-15：完稿自动切到报告舞台 ---------- */
+  useEffect(() => {
+    if (phase === "done" || phase === "error") setStageView("report");
+  }, [phase]);
+
   /* ---------- 开始 / 停止 ---------- */
   const resetSession = () => {
     setPlan([]);
@@ -425,6 +436,7 @@ export default function App() {
     setCiteFocus(null);
     stepRef.current = 0;
     readersRef.current = {};
+    setStageView("process"); // iter-15：新一轮调研回到全过程直播布局
   };
 
   const handleStart = async () => {
@@ -489,8 +501,11 @@ export default function App() {
         showStop={phase === "running"}
         sessionId={sessionId}
         onToast={showToast}
+        stageable={stageable}
+        stageView={stageView}
+        onStageChange={setStageView}
       />
-      <div className="rb-grid">
+      <div className={`rb-grid${stageClass}`}>
         <div className="rb-col rb-col-left">
           <TrajectoryStream entries={traj} phase={phase} />
         </div>
@@ -512,6 +527,7 @@ export default function App() {
             sections={sections}
             oneLine={oneLine}
             phase={phase}
+            planSections={PLAN_SECTIONS[mode] || 4}
             replay={isReplay}
             evidenceCount={evidence.length}
             onCiteClick={onCiteClick}

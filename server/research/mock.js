@@ -46,7 +46,7 @@ export async function runMockResearch(session) {
     let i = 0;
     for (const t of COMMON_STEPS) {
       if (session.aborted) {
-        session.aborted = false;
+        session.consumeAbort();
         return finishMock(session);
       }
       await runEntry(session, ++i, t);
@@ -54,7 +54,7 @@ export async function runMockResearch(session) {
     const midSteps = session.mode === "strict" ? STRICT_MID : QUICK_MID;
     for (const t of midSteps) {
       if (session.aborted) {
-        session.aborted = false;
+        session.consumeAbort();
         return finishMock(session);
       }
       await runEntry(session, ++i, t);
@@ -62,7 +62,7 @@ export async function runMockResearch(session) {
     const tail = session.mode === "strict" ? STRICT_TAIL : QUICK_TAIL;
     for (const t of tail) {
       if (session.aborted) {
-        session.aborted = false;
+        session.consumeAbort();
         return finishMock(session);
       }
       await runEntry(session, ++i, t);

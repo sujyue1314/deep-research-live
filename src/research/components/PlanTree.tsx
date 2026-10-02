@@ -28,8 +28,13 @@ export function PlanTree({ plan, phase }: Props) {
       >
         <span>调查计划</span>
         <span className="rb-panel-hint">
+          {/* iter-15：三态计数 —— 「已完成」= 已固定证据或章节声明覆盖；
+              「进行中」= 搜索/阅读/写作已触及（机器不靠词面猜测谎报完成） */}
           {plan.length
-            ? `${plan.filter((p) => p.status === "done").length}/${plan.length} 已完成`
+            ? `${plan.filter((p) => p.status === "done").length}/${plan.length} 已完成` +
+              (plan.some((p) => p.status === "active")
+                ? ` · ${plan.filter((p) => p.status === "active").length} 进行中`
+                : "")
             : "待拆解"}
         </span>
         <span className="rb-plan-caret">{collapsed ? "▸" : "▾"}</span>

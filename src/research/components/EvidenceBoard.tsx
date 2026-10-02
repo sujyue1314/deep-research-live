@@ -24,6 +24,7 @@ export function EvidenceBoard({
   question,
   evidence,
   conflicts,
+  phase,
   highlight,
   onHighlightDone,
   onCardClick,
@@ -84,7 +85,21 @@ export function EvidenceBoard({
           </div>
         ))}
         <div className="rb-cards">
-          {evidence.length === 0 && conflicts.length === 0 && (
+          {evidence.length === 0 && conflicts.length === 0 && phase === "running" && (
+            // iter-15：直播取证期给「即将到达」的骨架占位——否则面板下半部全白，
+            // 观众无法预期证据的数量与形态
+            <>
+              {[1, 2, 3, 4].map((i) => (
+                <div className="ev-skel" key={i}>
+                  <div className="ev-skel-line ev-skel-w40" />
+                  <div className="ev-skel-line" />
+                  <div className="ev-skel-line ev-skel-w70" />
+                  <div className="ev-skel-tag">证据位 {i} · 待固定</div>
+                </div>
+              ))}
+            </>
+          )}
+          {evidence.length === 0 && conflicts.length === 0 && phase !== "running" && (
             <div className="rb-empty" style={{ gridColumn: "1 / -2" }}>
               调查员固定的证据会列在这张参考文献表上，每条都可点开原始来源。
             </div>
