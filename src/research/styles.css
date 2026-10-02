@@ -286,6 +286,26 @@ body {
   flex: 1;
 }
 
+/* 右栏纵向配比（iter-7）：报告是主角，原则/计划压成限高参考屉
+   —— 否则两面板自然高度会把报告挤成一小条（900px 视口下仅剩 153px/24%） */
+.rb-col-right .rb-panel:not(.rb-report) {
+  flex: 0 0 auto;
+  max-height: 20%;
+}
+
+/* 表头钉住，列表内部滚动 */
+.rb-col-right .rb-panel:not(.rb-report) .rb-plan-list,
+.rb-col-right .rb-panel:not(.rb-report) .rb-principles-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.rb-col-right .rb-report {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
 .rb-panel-head {
   display: flex;
   align-items: baseline;

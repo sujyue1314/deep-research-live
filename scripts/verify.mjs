@@ -346,6 +346,16 @@ async function verifyUi() {
     ),
   }));
   log("   C3:", JSON.stringify(typo));
+  // 几何探针（iter-7）：报告面板高度占比 —— 右栏原则/计划面板不得把报告挤瘪
+  const geo = await page.evaluate(() => {
+    const col = document.querySelector(".rb-col-right");
+    const report = document.querySelector(".rb-report");
+    if (!col || !report) return null;
+    const cr = col.getBoundingClientRect();
+    const rr = report.getBoundingClientRect();
+    return { colH: Math.round(cr.height), reportH: Math.round(rr.height) };
+  });
+  log("   几何:", JSON.stringify(geo));
   await page.screenshot({ path: path.join(SHOTS, "verify-final.png") });
 
   await browser.close();
@@ -364,6 +374,7 @@ async function verifyUi() {
   ok(typo.endMark, "收尾印记（C3）");
   ok(typo.dc, "首字下沉候选（C3）");
   ok(typo.thin > 0, `中英文 thin space 生效（${typo.thin} 处，C3）`);
+  ok(geo && geo.reportH >= 0.45 * geo.colH, `报告面板占右栏 ≥45%（${geo?.reportH}/${geo?.colH}，iter-7）`);
   ok(errors.filter((e) => !e.includes("404")).length === 0, "无页面错误（favicon 404 除外）");
   fail.forEach((f) => log(" ", f));
   log(fail.length ? "ui: FAIL" : "ui: PASS");
