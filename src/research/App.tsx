@@ -40,6 +40,7 @@ export interface Section {
   index: number;
   heading: string;
   markdown: string;
+  markdownFull?: string; // iter-11：section 事件直接携带完整正文，本地打字机按此自播
   streaming: boolean;
   confidence?: string;
   crossVerified?: boolean;
@@ -135,6 +136,31 @@ export default function App() {
     setElapsed(0);
   }, []);
 
+  /* ---------- 报告打字机（iter-11） ----------
+     服务端不再逐帧推 section-chunk（关闭会时会截断末节），改为 section 事件
+     携带完整正文，前端按 markdownFull 自播；旧回放的 chunk 仍兼容追加 */
+  useEffect(() => {
+    const t = setInterval(() => {
+      setSections((ss) => {
+        let changed = false;
+        const next = ss.map((s) => {
+          if (!s.markdownFull) return s;
+          if (s.markdown.length >= s.markdownFull.length) {
+            if (s.streaming) {
+              changed = true;
+              return { ...s, streaming: false };
+            }
+            return s;
+          }
+          changed = true;
+          return { ...s, markdown: s.markdownFull.slice(0, s.markdown.length + 24) };
+        });
+        return changed ? next : ss;
+      });
+    }, 45);
+    return () => clearInterval(t);
+  }, []);
+
   /* ---------- SSE 事件流 ---------- */
   useEffect(() => {
     if (!sessionId) return;
@@ -159,7 +185,11 @@ export default function App() {
           setPrinciples(s.principles || []);
           setEvidence(s.evidence || []);
           setSections(
-            (s.sections || []).map((x: any) => ({ ...x, streaming: false })),
+            (s.sections || []).map((x: any) => ({
+              ...x,
+              markdownFull: x.markdownFull ?? x.markdown, // 回放/重连直接以全文展示
+              streaming: false,
+            })),
           );
           setConflicts(s.conflicts || []);
           setOneLine(s.oneLine || null);
@@ -291,27 +321,36 @@ export default function App() {
           ]);
           pushTraj({ kind: "conflict", text: e.description, urls: e.urls });
           break;
-        case "section":
-          setSections((ss) => [
-            ...ss,
-            {
-              index: e.index,
-              heading: e.heading,
-              markdown: "",
-              streaming: true,
-              confidence: e.confidence,
-              crossVerified: e.crossVerified,
-            },
-          ]);
+        case "section": {
+          const full = typeof e.markdown === "string" ? (e.markdown as string) : null;
+          setSections((ss) => {
+            if (ss.some((x) => x.index === e.index)) return ss; // 同节重复下发时去重
+            return [
+              ...ss,
+              {
+                index: e.index,
+                heading: e.heading,
+                markdown: full ?? "",
+                markdownFull: full ?? undefined,
+                streaming: true,
+                confidence: e.confidence,
+                crossVerified: e.crossVerified,
+              },
+            ];
+          });
           pushTraj({
             kind: "section",
             text: `撰写第 ${e.index} 节「${e.heading}」`,
           });
           break;
+        }
         case "section-chunk":
+          // iter-11 兼容旧回放：仅当节没有完整正文时才追加分帧
           setSections((ss) =>
             ss.map((s) =>
-              s.index === e.index ? { ...s, markdown: s.markdown + e.chunk } : s,
+              s.index === e.index && !s.markdownFull
+                ? { ...s, markdown: s.markdown + e.chunk }
+                : s,
             ),
           );
           break;

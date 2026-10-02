@@ -363,6 +363,15 @@ async function verifyUi() {
     return { colH: Math.round(cr.height), reportH: Math.round(rr.height) };
   });
   log("   几何:", JSON.stringify(geo));
+  // 截断探针（iter-11）：末节正文必须完整收尾（旧 bug：关闭后 chunk 队列被截）
+  const trunc = await page.evaluate(() => {
+    const md = document.querySelectorAll(".rp-md");
+    if (!md.length) return null;
+    const last = md[md.length - 1];
+    const t = last.textContent.replace(/\s+$/, "");
+    return { len: t.length, tail: t.slice(-6) };
+  });
+  log("   末节:", JSON.stringify(trunc));
   // 无英文残留探针（iter-8）：固定界面标签不得含拉丁字母
   const latinFree = await page.evaluate(() => {
     const sels = [
@@ -400,6 +409,10 @@ async function verifyUi() {
   ok(typo.dc, "首字下沉候选（C3）");
   ok(typo.thin > 0, `中英文 thin space 生效（${typo.thin} 处，C3）`);
   ok(geo && geo.reportH >= 0.45 * geo.colH, `报告面板占右栏 ≥45%（${geo?.reportH}/${geo?.colH}，iter-7）`);
+  ok(
+    !!trunc && /[。！？）】”]/.test(trunc?.tail?.slice(-1) || ""),
+    `末节完整收尾（…${trunc?.tail}，iter-11）`,
+  );
   ok(!/[A-Za-z]/.test(latinFree), "界面标签无英文残留（iter-8）");
   ok(anchor, "轨迹含日期锚点（iter-9）");
   ok(errors.filter((e) => !e.includes("404")).length === 0, "无页面错误（favicon 404 除外）");

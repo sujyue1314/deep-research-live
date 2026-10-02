@@ -24,16 +24,10 @@ function streamThought(session, stepNo, thought, actionName, voice = "investigat
 async function writeMockSection(s, index, heading, bullets, confidence, crossVerified) {
   const markdown = heading + "\n\n" + bullets.map((b, i) => `${i + 1}. ${b}`).join("\n");
   s.sections.push({ index, heading, markdown, citations: [], crossVerified });
-  s.emit({ type: "section", index, heading, confidence, crossVerified });
-  // 大屏打字机效果
-  let i = 0;
-  while (i < markdown.length) {
-    const size = 30;
-    s.emit({ type: "section-chunk", index, chunk: markdown.slice(i, i + size) });
-    i += size;
-    await sleep(50);
-  }
-  await sleep(600);
+  // 正文随 section 事件完整下发（iter-11）：打字机由前端按 markdownFull 自播，
+  // 服务端不再推 section-chunk（旧回放里的 chunk 前端仍兼容追加）
+  s.emit({ type: "section", index, heading, markdown, confidence, crossVerified });
+  await sleep(400);
 }
 
 export async function runMockResearch(session) {

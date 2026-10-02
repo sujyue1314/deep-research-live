@@ -13,8 +13,6 @@ import {
 } from "./verify.js";
 
 const STEP_MAX_TOKENS = 6000;
-const CHUNK_CHARS = 40; // 章节正文每帧推送字数
-const CHUNK_DELAY = 45; // 每帧间隔 ms（大屏打字机效果）
 const PAGE_OBS_CHARS = 4000; // 回灌给模型的正文长度上限
 const ALLOWED_TOOLS = new Set([
   "update_plan",
@@ -138,18 +136,10 @@ function touchPlan(session, text, status) {
 }
 
 function relaySection(session, index, heading, markdown, confidence, crossVerified) {
-  session.emit({ type: "section", index, heading, confidence, crossVerified });
-  // 大屏打字机效果：服务端按帧推送
-  let i = 0;
-  const push = () => {
-    if (session.closed) return;
-    if (i >= markdown.length) return;
-    const piece = markdown.slice(i, i + CHUNK_CHARS);
-    i += CHUNK_CHARS;
-    session.emit({ type: "section-chunk", index, chunk: piece });
-    setTimeout(push, CHUNK_DELAY);
-  };
-  push();
+  // 正文随 section 事件完整下发（iter-11）：服务端不再逐帧推 chunk。
+  // 原先 setTimeout 队列推 section-chunk，finish() 关闭会话后队列被
+  // closed 截断，末节正文停在半句（如「控制在 2500」）；打字机改由前端按 markdownFull 自播。
+  session.emit({ type: "section", index, heading, markdown, confidence, crossVerified });
 }
 
 function shortUrl(u) {
