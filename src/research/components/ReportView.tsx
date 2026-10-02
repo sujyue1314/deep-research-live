@@ -5,6 +5,7 @@ interface Props {
   sections: Section[];
   oneLine: string | null;
   phase: string;
+  replay: boolean; // iter-14：回放（?session= 打开）时 questions 到达不抢滚动
   evidenceCount: number;
   onCiteClick: (n: number) => void;
   citeFocus: number | null;
@@ -68,7 +69,7 @@ function renderLine(
   );
 }
 
-export function ReportView({ sections, oneLine, phase, onCiteClick, citeFocus, qa, onAsk }: Props) {
+export function ReportView({ sections, oneLine, phase, replay, onCiteClick, citeFocus, qa, onAsk }: Props) {
   const writing = sections.some((s) => s.streaming);
   const bodyRef = useRef<HTMLDivElement | null>(null);
   const [qInput, setQInput] = useState("");
@@ -81,6 +82,8 @@ export function ReportView({ sections, oneLine, phase, onCiteClick, citeFocus, q
   }, [citeFocus, sections]);
 
   // 新问答条目进入视图（只在条目数变化时滚，不跟流式 chunk 抢滚动）
+  // iter-14：回放批量重放 questions 快照 + 事件时不应滚动——否则分享链接一打开，
+  // 报告就被拽到底部追问区，一句话结论被顶出视口
   const qaLenRef = useRef(0);
   useLayoutEffect(() => {
     if (qa.length <= qaLenRef.current) {
@@ -88,9 +91,10 @@ export function ReportView({ sections, oneLine, phase, onCiteClick, citeFocus, q
       return;
     }
     qaLenRef.current = qa.length;
+    if (replay) return; // 直播/追问才跟随
     const list = bodyRef.current?.querySelector(".qa-list");
     list?.lastElementChild?.scrollIntoView({ behavior: "smooth", block: "center" });
-  }, [qa]);
+  }, [qa, replay]);
 
   const canAsk = phase === "done" && sections.length > 0;
   // 首字下沉候选：一句结论首字符为 CJK 或拉丁字母

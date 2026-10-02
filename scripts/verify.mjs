@@ -354,15 +354,36 @@ async function verifyUi() {
   }));
   log("   C3:", JSON.stringify(typo));
   // 几何探针（iter-7）：报告面板高度占比 —— 右栏原则/计划面板不得把报告挤瘪
+  // iter-14 扩展：完稿后计划屉应收起（只占头部一行），报告占比应更高
   const geo = await page.evaluate(() => {
     const col = document.querySelector(".rb-col-right");
     const report = document.querySelector(".rb-report");
+    const rb = document.querySelector(".rb-report-body");
     if (!col || !report) return null;
     const cr = col.getBoundingClientRect();
     const rr = report.getBoundingClientRect();
-    return { colH: Math.round(cr.height), reportH: Math.round(rr.height) };
+    return {
+      colH: Math.round(cr.height),
+      reportH: Math.round(rr.height),
+      reportBodyH: rb ? Math.round(rb.getBoundingClientRect().height) : null,
+      planItemsVisible: document.querySelectorAll(".rb-plan-list .pl-item").length,
+      planCaret: document.querySelector(".rb-plan-caret")?.textContent,
+      trajAtBottom: (() => {
+        const l = document.querySelector(".rb-traj-list");
+        if (!l) return null;
+        return l.scrollTop + l.clientHeight >= l.scrollHeight - 64;
+      })(),
+    };
   });
   log("   几何:", JSON.stringify(geo));
+  // iter-14：屉交互 —— 点击展开应看到全部计划项
+  await page.click(".rb-plan-toggle").catch(() => {});
+  await sleep(400);
+  const planOpen = await page.evaluate(() => ({
+    visible: document.querySelectorAll(".rb-plan-list .pl-item").length,
+    caret: document.querySelector(".rb-plan-caret")?.textContent,
+  }));
+  log("   计划屉展开:", JSON.stringify(planOpen));
   // 截断探针（iter-11）：末节正文必须完整收尾（旧 bug：关闭后 chunk 队列被截）
   const trunc = await page.evaluate(() => {
     const md = document.querySelectorAll(".rp-md");
@@ -409,6 +430,9 @@ async function verifyUi() {
   ok(typo.dc, "首字下沉候选（C3）");
   ok(typo.thin > 0, `中英文 thin space 生效（${typo.thin} 处，C3）`);
   ok(geo && geo.reportH >= 0.45 * geo.colH, `报告面板占右栏 ≥45%（${geo?.reportH}/${geo?.colH}，iter-7）`);
+  ok(geo?.planItemsVisible === 0 && geo?.planCaret === "▸", `完稿后计划屉自动收起（iter-14，${geo?.planItemsVisible}项可见/${geo?.planCaret}）`);
+  ok(planOpen.visible >= 3 && planOpen.caret === "▾", `屉点击展开恢复全部计划（iter-14，${planOpen.visible}项）`);
+  ok(geo?.trajAtBottom === true, "直播流完稿时贴底（iter-14 修复跟随目标）");
   ok(
     !!trunc && /[。！？）】”]/.test(trunc?.tail?.slice(-1) || ""),
     `末节完整收尾（…${trunc?.tail}，iter-11）`,
@@ -532,18 +556,33 @@ async function verifyShare() {
   });
   await page.waitForSelector(".ev-card", { timeout: 30000 });
   await sleep(2500);
-  const replay = await page.evaluate(() => ({
-    evidence: document.querySelectorAll(".ev-card").length,
-    sections: document.querySelectorAll(".rp-section").length,
-    crossCards: document.querySelectorAll(".tr-challenge.cross").length,
-    oneLine: document.querySelector(".rp-online")?.textContent?.slice(0, 40),
-    shareBtn: !!document.querySelector(".rb-share-btn"),
-  }));
+  const replay = await page.evaluate(() => {
+    const b = document.querySelector(".rb-report-body");
+    const ol = document.querySelector(".rp-online")?.getBoundingClientRect();
+    return {
+      evidence: document.querySelectorAll(".ev-card").length,
+      sections: document.querySelectorAll(".rp-section").length,
+      crossCards: document.querySelectorAll(".tr-challenge.cross").length,
+      oneLine: document.querySelector(".rp-online")?.textContent?.slice(0, 40),
+      shareBtn: !!document.querySelector(".rb-share-btn"),
+      qaItems: document.querySelectorAll(".qa-item").length,
+      reportScrollTop: b ? Math.round(b.scrollTop) : null, // iter-14：回放应在顶部（一句结论可见）
+      oneLineY: ol ? Math.round(ol.y) : null,
+      trajPinned: (() => {
+        const l = document.querySelector(".rb-traj-list");
+        return l ? l.scrollTop + l.clientHeight >= l.scrollHeight - 64 : null;
+      })(),
+      timerVal: (document.querySelector(".rb-hstats")?.textContent.match(/\d\d:\d\d/) || [])[0] ?? null,
+    };
+  });
   console.log("   ", JSON.stringify(replay));
   ok(replay.evidence === 5, `回放页证据 5 张（实际 ${replay.evidence}）`);
   ok(replay.sections === 3, `回放页报告 3 节（实际 ${replay.sections}）`);
   ok(replay.crossCards === 1, "守卫卡回放");
   ok(!!replay.shareBtn, "分享按钮存在");
+  ok(replay.reportScrollTop === 0 && replay.oneLineY !== null && replay.oneLineY > 0, `回放定位在报告顶部（scrollTop=${replay.reportScrollTop}，结论 y=${replay.oneLineY}，iter-14）`);
+  ok(replay.trajPinned === true, "回放轨迹贴底（iter-14）");
+  ok(replay.timerVal && replay.timerVal !== "00:00", `回放显示真实用时（${replay.timerVal}，iter-14）`);
 
   console.log("5) 分享链接构造（data-share）");
   // 注意：headless 下真实 Clipboard API 会锁死渲染进程，剪贴板交互留给真实浏览器手动验证；

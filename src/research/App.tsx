@@ -128,9 +128,11 @@ export default function App() {
   }, []);
 
   /* ---------- 分享链接回放：?session=<id> 直接订阅（不调 start） ---------- */
+  const [isReplay, setIsReplay] = useState(false); // iter-14：回放不触发 qa 滚动等「直播专属」行为
   useEffect(() => {
     const sid = new URLSearchParams(window.location.search).get("session");
     if (!sid) return;
+    setIsReplay(true);
     setSessionId(sid);
     setPhase("running"); // 占位，state 事件到达后校正
     setElapsed(0);
@@ -181,6 +183,10 @@ export default function App() {
           setPhase(s.phase === "error" ? "error" : s.phase === "done" ? "done" : "running");
           if (s.question) setQuestion(s.question);
           if (typeof s.mock === "boolean") setIsMock(s.mock);
+          // iter-14：计时显示真实用时 —— 完稿用 durationSec；直播分享链接回放用 createdAt 对齐
+          if (typeof s.durationSec === "number") setElapsed(s.durationSec);
+          else if (s.phase === "running" && typeof s.createdAt === "number")
+            setElapsed(Math.max(0, Math.round((Date.now() - s.createdAt) / 1000)));
           setPlan(s.plan || []);
           setPrinciples(s.principles || []);
           setEvidence(s.evidence || []);
@@ -358,7 +364,13 @@ export default function App() {
           setOneLine(e.text);
           break;
         case "qa-q":
-          setQa((qs) => [...qs, { id: e.id as string, q: e.q as string, a: "", streaming: true }]);
+          // iter-14：SSE 回放会重发事件流，state 快照之后 qa-q 再达会重复。
+          // 已存在则重置该条（与 qa-note 重流语义一致），不存在才新增
+          setQa((qs) =>
+            qs.some((x) => x.id === e.id)
+              ? qs.map((x) => (x.id === e.id ? { ...x, a: "", note: null, streaming: true } : x))
+              : [...qs, { id: e.id as string, q: e.q as string, a: "", streaming: true }],
+          );
           break;
         case "qa-note":
           // 机器诚实性复核打回：清空旧答案重流
@@ -495,11 +507,12 @@ export default function App() {
           />
         </div>
         <div className="rb-col rb-col-right">
-          <PlanTree plan={plan} />
+          <PlanTree plan={plan} phase={phase} />
           <ReportView
             sections={sections}
             oneLine={oneLine}
             phase={phase}
+            replay={isReplay}
             evidenceCount={evidence.length}
             onCiteClick={onCiteClick}
             citeFocus={citeFocus}

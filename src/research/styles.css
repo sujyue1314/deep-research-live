@@ -50,8 +50,8 @@ body {
 .rb-header {
   display: flex;
   align-items: flex-end;
-  gap: 24px;
-  padding: 18px 28px 12px;
+  gap: 20px;
+  padding: 12px 28px 8px; /* iter-14：报头让出纵向空间给报告 */
   background: var(--bg);
   border-bottom: 1px solid var(--ink);
   flex-shrink: 0;
@@ -60,7 +60,7 @@ body {
 .rb-brand {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 3px;
 }
 
 .rb-kicker {
@@ -241,8 +241,9 @@ body {
 .rb-grid {
   flex: 1;
   display: grid;
-  /* iter-13：报告加宽（400→460），正文 343→404px，更接近杂志栏宽 */
-  grid-template-columns: 300px minmax(0, 1fr) 460px;
+  /* iter-14：左栏收窄（300→280），中列让给证据卡双列；
+     报告列 460 不动（正文 403px 是已验证的杂志栏宽） */
+  grid-template-columns: 280px minmax(0, 1fr) 460px;
   gap: 0;
   min-height: 0;
 }
@@ -257,8 +258,8 @@ body {
 
 .rb-col-left {
   border-right: 1px solid var(--line);
-  padding-right: 22px;
-  padding-left: 28px;
+  padding-right: 14px;
+  padding-left: 28px; /* 与报头内容对齐 */
 }
 
 .rb-col-center {
@@ -287,9 +288,9 @@ body {
   flex: 1;
 }
 
-/* 右栏纵向配比（iter-7）：报告是主角，原则/计划压成限高参考屉
-   —— 否则两面板自然高度会把报告挤成一小条（900px 视口下仅剩 153px/24%。
-   iter-13：放宽到 34%，4 项计划可完整显示（170px 需求 < 218px 上限），报告仍占 60%+ */
+/* 右栏纵向配比（iter-7）：报告是主角，计划压成限高参考屉
+   —— iter-14：屉头可点折叠，完稿后默认收起（见 PlanTree），
+   收起态只占头部一行，报告在完稿态可占满整栏 */
 .rb-col-right .rb-panel:not(.rb-report) {
   flex: 0 0 auto;
   max-height: 34%;
@@ -584,6 +585,29 @@ body {
 
 /* ---------- 计划 ---------- */
 
+/* iter-14：屉头改为可点按钮（展开/收起）。按钮重置 + 保留面板头样式 */
+.rb-plan-toggle {
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--ink);
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  padding: 16px 0 10px;
+}
+
+.rb-plan-toggle:hover {
+  color: var(--clay-deep);
+}
+
+.rb-plan-caret {
+  margin-left: 8px;
+  color: var(--ink-faint);
+  font-size: 11px;
+}
+
 .rb-plan-list {
   display: flex;
   flex-direction: column;
@@ -664,9 +688,11 @@ body {
   color: var(--ink);
 }
 
+/* iter-14：阈值 300→230 —— 1366~1536 这一段原为单列大卡（548px），
+   中列加宽后双列可恢复，证据不再堆成狭长列表 */
 .rb-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
   gap: 1px;
   background: var(--line);
   border: 1px solid var(--line);
@@ -923,9 +949,28 @@ body {
   gap: 10px;
 }
 
+/* iter-14：预设词单行 + 横向滚动（替原换行两行方案：输入栏 151→112px，
+   省出的高度全给报告；窄屏沿用同一行规则，chip 随滚可达） */
 .ib-presets {
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
   margin-bottom: 10px;
+  scrollbar-width: none;
+}
+
+.ib-presets::-webkit-scrollbar {
+  display: none;
+}
+
+.ib-presets .ib-chip {
+  flex-shrink: 0;
+}
+
+/* 随机灵感吸右缘：预设横滚时也不被藏到滚动尽头 */
+.ib-presets .ib-dice {
+  position: sticky;
+  right: 0;
+  background: var(--bg);
 }
 
 .ib-chip {
@@ -1300,17 +1345,49 @@ body {
   min-width: 18px;
 }
 
-/* ---------- 窄屏适配（iter-13 重写） ---------- */
+/* ---------- 窄屏适配（iter-13 重写，iter-14 调宽 + 吸底输入栏） ---------- */
+
+/* iter-14：键盘聚焦轮廓（全局） */
+:focus-visible {
+  outline: 2px solid var(--clay);
+  outline-offset: 2px;
+}
+
+/* 直播流「回到最新」：用户上滚回看时出现 */
+.rb-traj {
+  position: relative;
+}
+
+.rb-traj-pin {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--ink);
+  color: var(--bg);
+  border: none;
+  border-radius: 999px;
+  padding: 5px 16px;
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(26, 25, 22, 0.25);
+  z-index: 5;
+}
 
 @media (max-width: 1280px) {
   .rb-grid {
-    grid-template-columns: 280px minmax(0, 1fr) 400px;
+    grid-template-columns: 240px minmax(0, 1fr) 420px;
   }
 }
 
 @media (max-width: 1100px) {
   .rb-grid {
-    grid-template-columns: 240px minmax(0, 1fr) 360px;
+    grid-template-columns: 220px minmax(0, 1fr) 360px;
+  }
+  /* 报头副标题让位：1100 以下统计区与品牌挤 */
+  .rb-sub {
+    display: none;
   }
 }
 
@@ -1321,6 +1398,8 @@ body {
     height: auto;
     min-height: 100vh;
     overflow: visible;
+    /* iter-14：输入栏吸底（fixed），留出通行高度防内容被遮 */
+    padding-bottom: 240px;
   }
   .rb-header {
     flex-wrap: wrap;
@@ -1350,8 +1429,22 @@ body {
   .rb-board-body {
     overflow: visible;
   }
+  /* iter-14：报告限 38em 排版栏宽（800px 竖屏正文原为 760px/行 54 字，过宽难读），
+     计划屉与报告一并限宽居中，保持编辑式版心 */
+  .rb-col-right .rb-report {
+    max-width: 38em;
+    margin: 0 auto;
+  }
+  /* iter-14：输入栏吸底 —— 首屏即见入口，不必滚过 4 个空面板 */
   .rb-inputbar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 50;
     padding: 12px 20px 16px;
+    box-shadow: 0 -10px 28px rgba(26, 25, 22, 0.1);
+    border-top: 1px solid var(--ink);
   }
   .ib-main {
     flex-wrap: wrap;
@@ -1364,11 +1457,17 @@ body {
 
 /* ≤640px 手机：报头统计只留状态+计时，输入区进一步收紧 */
 @media (max-width: 640px) {
+  .rb-screen {
+    padding-bottom: 320px; /* 吸底输入栏换行后更高（360px 回放态 290px），补足通行高度 */
+  }
   .rb-hstats .rb-stat:nth-child(n + 3) {
     display: none;
   }
   .rb-title {
     font-size: 26px;
+  }
+  .ib-prefix {
+    display: none; /* 前缀让位给输入框，占位说明已足够 */
   }
   .ib-mode {
     width: 100%;

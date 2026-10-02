@@ -30,8 +30,13 @@ export function Header({
   const shareUrl = sessionId ? `${location.origin}${location.pathname}?session=${sessionId}` : null;
   const shareLink = () => {
     if (!shareUrl) return;
+    // iter-14：剪贴板 API 不可用（非安全上下文/旧浏览器）时降级提示链接内容
+    if (!navigator.clipboard) {
+      onToast?.(`不支持自动复制，请手动复制：${shareUrl}`);
+      return;
+    }
     navigator.clipboard
-      ?.writeText(shareUrl)
+      .writeText(shareUrl)
       .then(
         () => onToast?.(`分享链接已复制：${shareUrl}`),
         () => onToast?.(`复制失败，请手动复制：${shareUrl}`),
@@ -56,10 +61,13 @@ export function Header({
             {label}
           </span>
         </div>
-        <div className="rb-stat">
-          <span className="rb-stat-label">计时</span>
-          <span className="rb-stat-val">{fmtTime(elapsed)}</span>
-        </div>
+        {/* iter-14：已完稿且无真实用时（旧回放记录不携带 durationSec）时不显示死钟 */}
+        {(phase !== "done" && phase !== "error") || elapsed > 0 ? (
+          <div className="rb-stat">
+            <span className="rb-stat-label">计时</span>
+            <span className="rb-stat-val">{fmtTime(elapsed)}</span>
+          </div>
+        ) : null}
         <div className="rb-stat">
           <span className="rb-stat-label">步数</span>
           <span className="rb-stat-val">{stats.steps}</span>

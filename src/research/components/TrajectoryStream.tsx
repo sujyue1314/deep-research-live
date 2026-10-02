@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { TrajEntry, Voice } from "../App";
 
 interface Props {
@@ -31,19 +31,30 @@ function VoiceTag({ voice }: { voice?: Voice }) {
 }
 
 export function TrajectoryStream({ entries, phase }: Props) {
-  const ref = useRef<HTMLDivElement>(null);
+  // iter-14：滚动容器是 .rb-traj-list（旧代码挂在 overflow:hidden 的面板上，
+  // scrollTop 赋值是空操作——直播流其实从未自动跟随过；回放 4454px 内容而 scrollTop=0 可证）
+  const listRef = useRef<HTMLDivElement>(null);
+  const [pinned, setPinned] = useState(true); // 贴底才跟随：用户上滚回看时不打断
   useEffect(() => {
-    const el = ref.current;
-    if (el) el.scrollTop = el.scrollHeight;
-  }, [entries]);
+    const el = listRef.current;
+    if (!el || !pinned) return;
+    el.scrollTop = el.scrollHeight;
+  }, [entries, pinned]);
 
   return (
-    <div className="rb-panel rb-traj" ref={ref}>
+    <div className="rb-panel rb-traj">
       <div className="rb-panel-head">
         <span>调查直播</span>
         <span className="rb-panel-hint">{phase === "running" ? "思考与操作实时流出" : "等待开始"}</span>
       </div>
-      <div className="rb-traj-list">
+      <div
+        className="rb-traj-list"
+        ref={listRef}
+        onScroll={(e) => {
+          const el = e.currentTarget;
+          setPinned(el.scrollTop + el.clientHeight >= el.scrollHeight - 64);
+        }}
+      >
         {entries.length === 0 && (
           <div className="rb-empty">输入研究问题后，调查员的每一步思考、搜索与取证都会流到这里。</div>
         )}
@@ -171,6 +182,19 @@ export function TrajectoryStream({ entries, phase }: Props) {
           );
         })}
       </div>
+      {!pinned && (
+        <button
+          className="rb-traj-pin"
+          onClick={() => {
+            const el = listRef.current;
+            if (!el) return;
+            el.scrollTop = el.scrollHeight;
+            setPinned(true);
+          }}
+        >
+          ↓ 回到最新
+        </button>
+      )}
     </div>
   );
 }

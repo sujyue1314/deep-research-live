@@ -83,6 +83,7 @@ export class ResearchSession {
       qa: this.qa,
       events: this._events,
       closed: this.closed,
+      finishedAt: this._finishedAt ?? null, // iter-14
       savedAt: Date.now(),
     };
   }
@@ -103,6 +104,7 @@ export class ResearchSession {
     s.qa = data.qa || [];
     s._events = Array.isArray(data.events) ? data.events : [];
     s.closed = !!data.closed;
+    s._finishedAt = data.finishedAt ?? null;
     return s;
   }
 
@@ -122,6 +124,11 @@ export class ResearchSession {
       stats: this.stats,
       oneLine: this.oneLine,
       qa: this.qa,
+      // iter-14：已完稿会话携带真实用时（秒），回放端据此显示计时；未完稿/旧记录无此字段
+      durationSec:
+        this._finishedAt != null
+          ? Math.max(0, Math.round((this._finishedAt - this.createdAt) / 1000))
+          : undefined,
     };
   }
 
@@ -205,6 +212,7 @@ export class ResearchSession {
   finish(reason = "done") {
     if (this.closed) return;
     this.phase = reason === "error" ? "error" : "done";
+    this._finishedAt = Date.now(); // iter-14：回放计时用真实用时，不再显示死钟 00:00
     this.emit({ type: "state", state: this.state });
     this.emit({ type: "done", phase: this.phase, reason });
     this.closed = true;
