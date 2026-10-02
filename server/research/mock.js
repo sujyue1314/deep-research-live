@@ -39,6 +39,15 @@ async function writeMockSection(s, index, heading, bullets, confidence, crossVer
 export async function runMockResearch(session) {
   session.phase = "running";
   session.emit({ type: "state", state: session.state });
+  // 日期锚点（iter-9）：演练也锚定真实今天，声明预录数据口径
+  {
+    const d = new Date();
+    const wd = "日一二三四五六"[d.getDay()];
+    session.emit({
+      type: "notice",
+      text: `日期锚点：今天是 ${d.getFullYear()} 年 ${d.getMonth() + 1} 月 ${d.getDate()} 日（周${wd}）。演练数据锚定 2024 年统计口径。`,
+    });
+  }
   try {
     let i = 0;
     for (const t of COMMON_STEPS) {

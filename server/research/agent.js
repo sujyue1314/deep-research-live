@@ -26,7 +26,29 @@ const ALLOWED_TOOLS = new Set([
   "finish",
 ]);
 
+/* ---------- 日期与时效性（iter-9） ---------- */
+
+const WEEKDAYS = "日一二三四五六";
+export function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()} 年 ${d.getMonth() + 1} 月 ${d.getDate()} 日（周${WEEKDAYS[d.getDay()]}）`;
+}
+
+/** 问题涉及时效性：相对时间词、或出现当前年/去年 */
+export function isTimeSensitive(text = "") {
+  if (/今年|去年|最新|近期|最近|当下|现状|现在|截至目前|以来/.test(text)) return true;
+  const cur = new Date().getFullYear();
+  for (const m of text.matchAll(/(\d{4})\s*年/g)) {
+    if (Number(m[1]) >= cur - 1) return true;
+  }
+  return false;
+}
+
 const CORE_PROMPT = (question) => `你是「现场调查局」的调查员 Atria，正在展会现场面向公众做深度调查直播。观众在大屏上实时看着你的每一步思考和操作，请保持专业又生动的调查员口吻。
+
+【当前日期】
+今天是 ${todayStr()}。你的训练记忆不覆盖最近约一年的事件——凡涉及该时段的事实，一律 web_search 取证，不得凭记忆作答；不确定时明确声明数据截止时点。
+${isTimeSensitive(question) ? "【本问题涉及时效】子问题中必须包含一条「最新动态」方向；查最新数据时给 web_search 传 recency: \"year\"。" : "本问题以历史数据为主，搜索时不需要限制时间范围。"}
 
 【研究问题】
 ${question}
@@ -43,7 +65,7 @@ ${question}
 【可用工具】
 1. update_plan — 第一步必须调用。先列「第一性要素」，再拆子问题。参数：
    {"principles": ["回答该问题所需的不可再分的事实基础/权威口径，如：比较类问题先明确比较主体与口径；数值类问题先确定官方统计口径与年份"], "subquestions": ["子问题1", "子问题2", ...]（3-5 个）}
-2. web_search — 搜索。参数：{"query": "搜索关键词"}
+2. web_search — 搜索。参数：{"query": "搜索关键词", "recency": "可选：查年度最新动态传 \"year\"、月度内 \"month\"、周内 \"week\"、日内 \"day\"；查历史数据不要传此字段"}
 3. open_page — 阅读网页正文。参数：{"url": "https://..."}（url 必须来自搜索结果）
 4. save_evidence — 固定证据卡片。参数：{"url", "title", "quote": "必须从原文逐字摘录的关键句（省略可用……）", "note": "这条证据说明了什么"}
 5. note_conflict — 标记来源冲突：这是直播的关键时刻，请向观众清楚解释两方说法与你的裁决思路。参数：{"urls": ["urlA", "urlB"], "description": "冲突描述"}
@@ -225,10 +247,13 @@ async function executeAction(session, action, opts = {}) {
       }
       const query = String(action.query || "").trim();
       if (!query) return { ok: false, msg: "query 不能为空" };
+      // 时效限定（iter-9）：模型按提示词传 recency，服务端校验取值
+      const RECENCY = ["year", "month", "week", "day", "hour"];
+      const recency = RECENCY.includes(action.recency) ? action.recency : undefined;
       session.stats.searches += 1;
-      session.emit({ type: "search", query, n: session.stats.searches });
+      session.emit({ type: "search", query, n: session.stats.searches, recency });
       touchPlan(session, query, "active");
-      const { results, provider } = await webSearch(query, 5);
+      const { results, provider } = await webSearch(query, 5, recency ? { timeRange: recency } : {});
       results.forEach((r) => {
         session.noteKnown(r.url);
         session.noteContext(r.url, `${r.title} ${r.snippet}`);
@@ -449,6 +474,13 @@ async function executeAction(session, action, opts = {}) {
 async function investigatorLoop(session, opts = {}) {
   const budget = opts.budget || session.limits;
   const stopSteps = opts.stopSteps ?? session.limits.maxSteps;
+  // 日期锚点（iter-9）：让观众看到「今天」与记忆边界
+  if (opts.anchor !== false) {
+    session.emit({
+      type: "notice",
+      text: `日期锚点：今天是 ${todayStr()}；训练记忆之外的近期事实将一律联网取证。`,
+    });
+  }
   const messages = opts.messages || [
     {
       role: "system",
@@ -456,7 +488,9 @@ async function investigatorLoop(session, opts = {}) {
     },
     {
       role: "user",
-      content: opts.firstMessage || "开始调查。请先输出第一步：列出第一性要素并拆解子问题（update_plan）。",
+      content:
+        opts.firstMessage ||
+        `今天是 ${todayStr()}。开始调查：请先输出第一步，列出第一性要素并拆解子问题（update_plan），时效敏感问题记得安排「最新动态」方向。`,
     },
   ];
   let invalidStreak = 0;
@@ -560,6 +594,8 @@ export async function runSkeptic(session) {
     ? session.conflicts.map((c, i) => `冲突${i + 1}：${c.description}`).join("\n")
     : "（未标记冲突）";
   const user = `你是「现场调查局」的质疑者。调查员刚完成取证，现在由你向证据开炮，观众在大屏上看你的审查过程。
+
+【当前日期】今天是 ${todayStr()}；对「最新动态」类结论的时效性要格外苛刻。
 
 【研究问题】${session.question}
 
@@ -751,6 +787,8 @@ async function runAdjudicator(session, diversity = null) {
       : "");
 
   const user = `你是「现场调查局」的裁决者。调查员与质疑者已完成取证与辩论，现在由你裁决争议并撰写最终报告。
+
+【当前日期】今天是 ${todayStr()}；报告须注明数据时点，涉及「最新」的结论须有近期来源支撑。
 
 【研究问题】${session.question}
 

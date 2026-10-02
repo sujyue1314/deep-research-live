@@ -103,6 +103,7 @@ async function verifyMock(which) {
       const div = ev("challenge").find((c) => c.kind === "diversity");
       ok(!!div && !!div.host && !!div.query, "守卫卡（单一域名 + 检索词）");
       ok(evts.some((e) => e.type === "notice" && e.text.includes("异源补搜成功")), "补搜成功 notice");
+      ok(evts.some((e) => e.type === "notice" && e.text.includes("日期锚点")), "日期锚点 notice（iter-9）");
       ok(evidence.length === 5, `证据 5 条（实际 ${evidence.length}）`);
       const hosts = new Set(evidence.map((e) => new URL(e.url).host));
       ok(hosts.size >= 3, `跨 ${hosts.size} 域名`);
@@ -110,6 +111,7 @@ async function verifyMock(which) {
       ok(secs.length === 3, `3 节报告（实际 ${secs.length}）`);
       ok(evts.some((e) => e.type === "verdict"), "裁决存在");
     } else {
+      ok(evts.some((e) => e.type === "notice" && e.text.includes("日期锚点")), "日期锚点 notice（iter-9）");
       ok(evidence.length === 4, `证据 4 条（实际 ${evidence.length}）`);
       const secs = ev("section");
       ok(secs.length === 3, `3 节报告（实际 ${secs.length}）`);
@@ -167,6 +169,11 @@ async function verifyFire() {
   ok(res.diversity?.tried, "系统执行了补搜");
   ok(res.diversity?.succeeded, "补搜成功引入新域名");
   ok(!events.some((e) => e.type === "error"), "零 error");
+  // iter-9 时效性
+  const { isTimeSensitive } = await importAbs(path.join(ROOT, "server/research/agent.js"));
+  ok(isTimeSensitive("今年上海常住人口最新数据"), "时效判定：相对时间词");
+  ok(isTimeSensitive(`${new Date().getFullYear()} 年主流大模型`), "时效判定：当前年份");
+  ok(!isTimeSensitive("上海近十年常住人口变化"), "时效判定：历史问题不算时效敏感");
   console.log(fail.length ? "fire: FAIL" : "fire: PASS");
   return fail.length === 0;
 }
@@ -370,6 +377,10 @@ async function verifyUi() {
       .map((s) => [...document.querySelectorAll(s)].map((el) => el.textContent).join(" "))
       .join(" ");
   });
+  // iter-9 日期锚点：轨迹里可见
+  const anchor = await page.evaluate(
+    () => document.querySelector(".rb-traj")?.textContent.includes("日期锚点") ?? false,
+  );
   await page.screenshot({ path: path.join(SHOTS, "verify-final.png") });
 
   await browser.close();
@@ -390,6 +401,7 @@ async function verifyUi() {
   ok(typo.thin > 0, `中英文 thin space 生效（${typo.thin} 处，C3）`);
   ok(geo && geo.reportH >= 0.45 * geo.colH, `报告面板占右栏 ≥45%（${geo?.reportH}/${geo?.colH}，iter-7）`);
   ok(!/[A-Za-z]/.test(latinFree), "界面标签无英文残留（iter-8）");
+  ok(anchor, "轨迹含日期锚点（iter-9）");
   ok(errors.filter((e) => !e.includes("404")).length === 0, "无页面错误（favicon 404 除外）");
   fail.forEach((f) => log(" ", f));
   log(fail.length ? "ui: FAIL" : "ui: PASS");
@@ -425,6 +437,11 @@ async function verifyCache() {
   const stats2 = searchCacheStats();
   ok(stats2.hits === 1 && stats2.misses === 2, `异源补搜（excludeDomains）不读缓存（misses=${stats2.misses}）`);
   ok(c.results.length > 0, "异源补搜仍有结果");
+  // timeRange 变体独立 key（iter-9）：时效限定不与无限制查询共享缓存
+  const d = await webSearch(q, 5, { timeRange: "year" });
+  const stats3 = searchCacheStats();
+  ok(stats3.hits === 1 && stats3.misses === 3, `时效限定（timeRange）不读缓存（misses=${stats3.misses}）`);
+  ok(d.results.length > 0, "时效限定搜索仍有结果");
   console.log(fail.length ? "cache: FAIL" : "cache: PASS");
   return fail.length === 0;
 }
