@@ -126,7 +126,6 @@ node scripts/verify.mjs cache         # 搜索缓存单元测试（命中/一致
 ## 迭代开发（worktree 约定）
 
 每次优化一个独立 worktree，互不干扰、可并行对比：
-
 ```bash
 git worktree add .wt/iter-N -b iter/N-主题    # 建迭代分支
 # 端口对约定：iter-1 = 5210 前端 + 3110 后端，iter-2 = 5220 + 3120 ……
@@ -137,8 +136,10 @@ git worktree add .wt/iter-N -b iter/N-主题    # 建迭代分支
 - 主仓库 `main` 始终是稳定基线（即 `pnpm dev` 的 5180/3001 预览源）
 - worktree 的 `node_modules` 用 junction 共享主仓库的安装（避免 pnpm 供应链策略
   最小发布年龄检查与重复安装）；依赖变化时再单独处理
-- 验证链：mock 控制台断言（`.run/verify-mock.mjs` 类脚本）→ puppeteer UI 断言 → 真实模式跑通
+- 验证链：`node scripts/verify.mjs <mode>`（见上节）→ 真实模式跑通
 - 通过后合并回 main；迭代目录 `.wt/`、运行产物 `.run/` 均不入库
+- 故障提示：UI 行为异常或验证莫名失败时，先怀疑 vite 监听陈旧（编辑未生效），
+  重启该 worktree 的 vite 进程后重试
 
 ## 已知限制
 

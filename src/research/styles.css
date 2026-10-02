@@ -219,6 +219,18 @@ body {
   color: var(--bg);
 }
 
+/* 分享按钮：陶土描边的轻量变体（iter-5） */
+.rb-share-btn {
+  border-color: var(--clay);
+  color: var(--clay-deep);
+}
+
+.rb-share-btn:hover:not(:disabled) {
+  background: var(--clay-soft);
+  border-color: var(--clay-deep);
+  color: var(--clay-deep);
+}
+
 .rb-btn-ghost {
   border-color: var(--line);
   color: var(--ink-dim);

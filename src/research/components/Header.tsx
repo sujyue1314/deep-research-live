@@ -7,6 +7,8 @@ interface Props {
   isMock: boolean;
   showStop: boolean;
   onStop: () => void;
+  sessionId: string | null;
+  onToast?: (t: string) => void;
 }
 
 const fmtTime = (s: number) => {
@@ -15,7 +17,26 @@ const fmtTime = (s: number) => {
   return `${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
 };
 
-export function Header({ phase, elapsed, stats, isMock, showStop, onStop }: Props) {
+export function Header({
+  phase,
+  elapsed,
+  stats,
+  isMock,
+  showStop,
+  onStop,
+  sessionId,
+  onToast,
+}: Props) {
+  const shareUrl = sessionId ? `${location.origin}${location.pathname}?session=${sessionId}` : null;
+  const shareLink = () => {
+    if (!shareUrl) return;
+    navigator.clipboard
+      ?.writeText(shareUrl)
+      .then(
+        () => onToast?.(`分享链接已复制：${shareUrl}`),
+        () => onToast?.(`复制失败，请手动复制：${shareUrl}`),
+      );
+  };
   const dot =
     phase === "running" ? "rb-dot-live" : phase === "done" ? "rb-dot-done" : phase === "error" ? "rb-dot-err" : "";
   const label =
@@ -56,6 +77,16 @@ export function Header({ phase, elapsed, stats, isMock, showStop, onStop }: Prop
       {showStop && (
         <button className="rb-btn rb-btn-stop" onClick={onStop}>
           停止调查
+        </button>
+      )}
+      {sessionId && (
+        <button
+          className="rb-btn rb-share-btn"
+          onClick={shareLink}
+          data-share={shareUrl}
+          title="复制可分享的回放链接（支持进行中直播与完稿回放）"
+        >
+          分享
         </button>
       )}
     </header>

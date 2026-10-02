@@ -21,6 +21,9 @@ _legacy-tycoon/
 成品/
 *.zip
 
+# 会话持久化数据
+.data/
+
 # 环境
 .env
 .env.*
