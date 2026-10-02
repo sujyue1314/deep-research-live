@@ -1,8 +1,8 @@
 {
-  "name": "vanity-fair-tycoon",
+  "name": "atria-research-demo",
   "version": "0.1.0",
   "private": true,
-  "description": "AI Demo 合集：《大富翁·名利场》(/) + 现场调查局·Atria 深度研究 (/research.html，见 README-research.md)",
+  "description": "现场调查局 · Atria 深度研究 Demo (/research.html，见 README-research.md)",
   "type": "module",
   "scripts": {
     "dev:server": "node server/index.js",
@@ -10,13 +10,14 @@
     "dev": "concurrently -k -n server,client -c blue,green \"pnpm dev:server\" \"pnpm dev:client\"",
     "build": "vite build",
     "start": "node server/index.js",
-    "sim": "node server/sim.js",
     "verify": "node scripts/verify.mjs",
     "verify:ui": "node scripts/verify.mjs ui"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.31.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@types/react": "^18.3.12",

@@ -1,8 +1,8 @@
 # 现场调查局 · Atria Dawn Preview 深度研究 Demo
 
-《大富翁·名利场》之外的**独立 Demo**，用于展会现场展示 Atria-Dawn-Preview 的 Agentic 深度研究能力。
+用于展会现场展示 Atria-Dawn-Preview 的 Agentic 深度研究能力。
 入口：`http://127.0.0.1:5180/research.html`（开发）或 `http://127.0.0.1:3001/research.html`（生产构建）。
-与大富翁 Demo 共用同一个 Node 服务端，互不干扰。
+基于 Node 服务端（`server/index.js`）。
 
 ## 它展示了什么
 
@@ -72,7 +72,7 @@ save_evidence / note_conflict / write_section / finish），观测结果回灌�
 
 ### 1. 配置 Atria 密钥
 
-密钥配置与大富翁共用（见 `server/config.js`）：
+密钥配置（见 `server/config.js`）：
 
 - 文件：`~/.dsh/.credentials.yaml` 中写入 `ATRIA_API_KEY: sk-xxx`（优先）
 - 或环境变量：`ATRIA_KEY` / `ATRIA_API_KEY`
@@ -84,7 +84,7 @@ save_evidence / note_conflict / write_section / finish），观测结果回灌�
 ### 2. 启动
 
 ```bash
-pnpm dev          # 同时起服务端(3001) + Vite(5180)，两个 Demo 都可用
+pnpm dev          # 同时起服务端(3001) + Vite(5180)
 # 或生产构建：
 pnpm build && pnpm start   # 服务端直接伺服 dist/，访问 :3001/research.html
 ```
