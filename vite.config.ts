@@ -41,7 +41,7 @@ export default defineConfig({
     outDir: "dist",
     chunkSizeWarningLimit: 900,
     rollupOptions: {
-      // 多页构建：《大富翁》main + 调查局 research
+      // 多页构建：《大富翁》main + 探照灯 research
       input: {
         main: resolve(__dirname, "index.html"),
         research: resolve(__dirname, "research.html"),

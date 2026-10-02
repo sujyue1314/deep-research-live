@@ -156,7 +156,7 @@ export function ReportView({
     <div className="rb-panel rb-report rb-doc">
       {/* 文号头 */}
       <div className="doc-head">
-        <div className="doc-kicker">现场调查局 · 调查报告</div>
+        <div className="doc-kicker">探照灯 · 调查报告</div>
         <div className="doc-meta mono">
           {"No." + (sessionId ? sessionId.replace(/^rs_/, "").slice(0, 12) : "——————")} · {dateStr} ·{" "}
           {MODE_NAME[mode] || "快查"}
@@ -262,7 +262,7 @@ export function ReportView({
         {phase === "done" && sections.length > 0 && (
           <div className="doc-seal">
             <div className="doc-seal-ring">
-              <span>现场调查局</span>
+              <span>探照灯</span>
               <span className="doc-seal-main">完稿</span>
               <span className="mono">{dateStr}</span>
             </div>
@@ -316,11 +316,11 @@ export function ReportView({
             </div>
           </div>
         )}
-        {/* 本局答记者问（原 Q&A） */}
+        {/* 答记者问（原 Q&A） */}
         {canAsk && (
           <div className="rb-qa">
             <div className="rb-qa-head">
-              <span>本局答记者问</span>
+              <span>答记者问</span>
               <span className="rb-panel-hint">回答仅基于本次固定的证据</span>
             </div>
             <div className="qa-list">

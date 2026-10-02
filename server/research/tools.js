@@ -1,4 +1,4 @@
-// 调查局工具箱：联网搜索 + 网页正文抓取
+// 探照灯工具箱：联网搜索 + 网页正文抓取
 // 搜索提供者优先级：TAVILY_API_KEY > SERPER_API_KEY > DuckDuckGo HTML > Bing HTML
 // 全部不依赖外部 npm 包，纯 fetch + 正则解析
 
