@@ -59,6 +59,10 @@ async function searchTavily(query, limit, opts = {}) {
   if (Array.isArray(opts.excludeDomains) && opts.excludeDomains.length) {
     body.exclude_domains = [...new Set(opts.excludeDomains)];
   }
+  // 时效限定（iter-9）：模型对最新动态类查询传 year/month/week/day
+  if (opts.timeRange) {
+    body.time_range = opts.timeRange;
+  }
   const res = await timedFetch("https://api.tavily.com/search", {
     method: "POST",
     headers: {
@@ -240,7 +244,12 @@ const CACHE_CAP = 200;
 let cacheStats = { hits: 0, misses: 0 };
 
 function cacheKey(q, opts) {
-  return JSON.stringify([q, Array.isArray(opts?.excludeDomains) ? opts.excludeDomains : []]);
+  // timeRange 也参与 key（iter-9）：同词不同时效范围不能共享缓存
+  return JSON.stringify([
+    q,
+    Array.isArray(opts?.excludeDomains) ? opts.excludeDomains : [],
+    opts?.timeRange || null,
+  ]);
 }
 
 export function clearSearchCache() {
