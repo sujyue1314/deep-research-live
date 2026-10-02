@@ -270,7 +270,7 @@ async function verifyUi() {
   log("   守卫卡:", JSON.stringify(cross));
 
   log("3) 等报告完成 → 双向联动");
-  await page.waitForSelector(".rp-online", { timeout: 200000 });
+  await page.waitForSelector(".doc-verdict-text", { timeout: 200000 }); // iter-17：rp-online → 裁决段
   await sleep(1500);
   await page.evaluate(() => {
     const card = [...document.querySelectorAll(".ev-card")].find(
@@ -343,14 +343,25 @@ async function verifyUi() {
   log("   范围内:", JSON.stringify(qa1).slice(0, 160));
   const qa2 = await askAndWait("北京人口是多少？");
   log("   范围外:", JSON.stringify(qa2).slice(0, 160));
-  // C3 排版探针：收尾印记 / 首字下沉候选 / thin space 生效（U+2009 = 8201）
+  // C3 排版探针：完稿印 / 首字下沉候选 / thin space 生效（U+2009 = 8201）
+  // iter-17：公报原型 —— .rp-end-mark → .doc-seal-ring；.rp-online → .doc-verdict-text
   const typo = await page.evaluate(() => ({
-    endMark: !!document.querySelector(".rp-end-mark"),
-    dc: !!document.querySelector(".rp-online span.rp-dc"),
-    thin: [...document.querySelectorAll(".rp-line, .rp-online > span:last-child")].reduce(
+    endMark: !!document.querySelector(".doc-seal-ring"),
+    dc: !!document.querySelector(".doc-verdict-text.rp-dc"),
+    thin: [...document.querySelectorAll(".rp-line, .doc-verdict-text")].reduce(
       (n, el) => n + [...el.textContent].filter((c) => c.charCodeAt(0) === 8201).length,
       0,
     ),
+    // iter-17 公报文书探针
+    doc: {
+      head: !!document.querySelector(".doc-head"),
+      verdict: document.querySelector(".doc-verdict-text")?.textContent.slice(0, 24),
+      findings: document.querySelectorAll(".doc-finding").length,
+      conflict: !!document.querySelector(".doc-conflict"),
+      appendixRows: document.querySelectorAll(".doc-ev-row").length,
+      evCount: document.querySelectorAll(".ev-card").length,
+      qaRestyled: document.querySelector(".rb-qa-head span")?.textContent,
+    },
   }));
   log("   C3:", JSON.stringify(typo));
   // 几何探针（iter-7）：报告面板高度占比 —— 右栏原则/计划面板不得把报告挤瘪
@@ -450,9 +461,13 @@ async function verifyUi() {
   ok(printProbe.report !== "none" && printProbe.board !== "none", "打印媒体保留报告+证据");
   ok(qa1.a.includes("2480.5") && qa1.chips.length >= 1, "范围内追问带数据+引用");
   ok(/无法|没有.{0,6}(记录|数据|证据)/.test(qa2.a), "范围外追问诚实拒答");
-  ok(typo.endMark, "收尾印记（C3）");
+  ok(typo.endMark, "完稿印（C3）");
   ok(typo.dc, "首字下沉候选（C3）");
   ok(typo.thin > 0, `中英文 thin space 生效（${typo.thin} 处，C3）`);
+  ok(typo.doc?.head && !!typo.doc?.verdict, "文号头 + 裁决段（iter-17 公报）");
+  ok(typo.doc?.findings === 3, `认定 3 条（实际 ${typo.doc?.findings}，iter-17）`);
+  ok(typo.doc?.appendixRows === typo.doc?.evCount, `附录证据清单与证据板一致（${typo.doc?.appendixRows} 行，iter-17）`);
+  ok(!!typo.doc?.qaRestyled && typo.doc.qaRestyled === "本局答记者问", "追问改「本局答记者问」（iter-17）");
   ok(geo && geo.reportH >= 0.45 * geo.colH, `报告面板占右栏 ≥45%（${geo?.reportH}/${geo?.colH}，iter-7）`);
   ok(geo?.planItemsVisible === 0 && geo?.planCaret === "▸", `完稿后计划屉自动收起（iter-14，${geo?.planItemsVisible}项可见/${geo?.planCaret}）`);
   ok(planOpen.visible >= 3 && planOpen.caret === "▾", `屉点击展开恢复全部计划（iter-14，${planOpen.visible}项）`);
@@ -590,10 +605,11 @@ async function verifyShare() {
   await sleep(2500);
   const replay = await page.evaluate(() => {
     const b = document.querySelector(".rb-report-body");
-    const ol = document.querySelector(".rp-online")?.getBoundingClientRect();
+    // iter-17：rp-online → 裁决段；rp-section → 认定块
+    const ol = document.querySelector(".doc-verdict-text")?.getBoundingClientRect();
     return {
       evidence: document.querySelectorAll(".ev-card").length,
-      sections: document.querySelectorAll(".rp-section").length,
+      sections: document.querySelectorAll(".doc-finding").length,
       crossCards: document.querySelectorAll(".tr-challenge.cross").length,
       oneLine: document.querySelector(".rp-online")?.textContent?.slice(0, 40),
       shareBtn: !!document.querySelector(".rb-share-btn"),

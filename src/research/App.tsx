@@ -529,7 +529,10 @@ export default function App() {
             phase={phase}
             planSections={PLAN_SECTIONS[mode] || 4}
             replay={isReplay}
-            evidenceCount={evidence.length}
+            evidence={evidence}
+            conflicts={conflicts}
+            sessionId={sessionId}
+            mode={mode}
             onCiteClick={onCiteClick}
             citeFocus={citeFocus}
             qa={qa}
