@@ -99,7 +99,7 @@ export function ReportView({ sections, oneLine, phase, onCiteClick, citeFocus, q
   return (
     <div className="rb-panel rb-report">
       <div className="rb-panel-head">
-        <span>报告 · Report</span>
+        <span>报告</span>
         <span className="rb-panel-hint">
           {phase === "done" ? "已完稿" : writing ? "撰写中…" : sections.length ? "取证中…" : "待生成"}
         </span>
@@ -122,7 +122,7 @@ export function ReportView({ sections, oneLine, phase, onCiteClick, citeFocus, q
         )}
         {sections.length === 0 && !oneLine && (
           <div className="rb-empty">
-            证据收集完成后，Atria 会在这里撰写带引用编号的结论报告。点击报告中的 [n] 可定位到证据板上对应的原始来源。
+            证据收集完成后，调查员会在这里撰写带引用编号的结论报告。点击报告中的 [n] 可定位到证据板上对应的原始来源。
           </div>
         )}
         {sections.map((s) => (
@@ -163,7 +163,7 @@ export function ReportView({ sections, oneLine, phase, onCiteClick, citeFocus, q
         {canAsk && (
           <div className="rb-qa">
             <div className="rb-qa-head">
-              <span>追问 · Follow-up</span>
+              <span>追问</span>
               <span className="rb-panel-hint">回答仅基于本次固定的证据</span>
             </div>
             <div className="qa-list">

@@ -11,7 +11,7 @@ import {
 import { JsonFieldReader } from "../json-reader";
 import { Header } from "./components/Header";
 import { InputBar } from "./components/InputBar";
-import { PlanTree, PrinciplesPanel } from "./components/PlanTree";
+import { PlanTree } from "./components/PlanTree";
 import { TrajectoryStream } from "./components/TrajectoryStream";
 import { EvidenceBoard } from "./components/EvidenceBoard";
 import { ReportView } from "./components/ReportView";
@@ -121,7 +121,7 @@ export default function App() {
     researchInfo()
       .then((info) => {
         setHasKey(!!info.hasKey);
-        if (!info.hasKey) showToast("未检测到 Atria API 密钥，将以「演练模式」运行");
+        if (!info.hasKey) showToast("未检测到模型密钥，将以「演练模式」运行");
       })
       .catch(() => {});
   }, []);
@@ -456,7 +456,6 @@ export default function App() {
           />
         </div>
         <div className="rb-col rb-col-right">
-          <PrinciplesPanel principles={principles} />
           <PlanTree plan={plan} />
           <ReportView
             sections={sections}
