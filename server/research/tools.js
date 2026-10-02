@@ -232,10 +232,36 @@ async function searchSearx(query, limit) {
  * 搜索：依次尝试各提供者，第一个成功即返回
  * 每个 provider 的结果先经相关性过滤（剔除标题/摘要与查询零相关的垃圾页）
  * opts.excludeDomains：排除已知域名，用于交叉验证补搜（仅 Tavily 支持）
+ * 结果按「查询+排除域名」内存缓存（展会反复问同一题时加速并省额度；
+ * 异源补搜因 excludeDomains 不同会生成独立 key，永远走真实搜索）
  */
+const SEARCH_CACHE = new Map();
+const CACHE_CAP = 200;
+let cacheStats = { hits: 0, misses: 0 };
+
+function cacheKey(q, opts) {
+  return JSON.stringify([q, Array.isArray(opts?.excludeDomains) ? opts.excludeDomains : []]);
+}
+
+export function clearSearchCache() {
+  SEARCH_CACHE.clear();
+  cacheStats = { hits: 0, misses: 0 };
+}
+
+export function searchCacheStats() {
+  return { ...cacheStats, size: SEARCH_CACHE.size };
+}
+
 export async function webSearch(query, limit = 5, opts = {}) {
   const q = String(query || "").slice(0, 200);
   if (!q) return { results: [], provider: "none" };
+  const key = cacheKey(q, opts);
+  const cached = SEARCH_CACHE.get(key);
+  if (cached) {
+    cacheStats.hits += 1;
+    return cached;
+  }
+  cacheStats.misses += 1;
   for (const [name, fn] of [
     ["tavily", searchTavily],
     ["serper", searchSerper],
@@ -249,7 +275,13 @@ export async function webSearch(query, limit = 5, opts = {}) {
       if (!rows || !rows.length) continue;
       const kept = relevanceFilter(q, rows).slice(0, limit);
       if (kept.length) {
-        return { results: kept, provider: name };
+        const result = { results: kept, provider: name };
+        // 只缓存非空的成功结果（瞬时失败不应粘连）
+        if (SEARCH_CACHE.size >= CACHE_CAP) {
+          SEARCH_CACHE.delete(SEARCH_CACHE.keys().next().value);
+        }
+        SEARCH_CACHE.set(key, result);
+        return result;
       }
       console.warn(`[research.tools] ${name} 结果与查询零相关，尝试下一个提供者`);
     } catch (e) {

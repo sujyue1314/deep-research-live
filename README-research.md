@@ -108,12 +108,20 @@ pnpm build && pnpm start   # 服务端直接伺服 dist/，访问 :3001/research
 
 ## 开发验证
 
+回归套件统一入口（默认打 5180 主预览，`DEMO_BASE` 环境变量可指向任一 worktree 的端口对）：
+
 ```bash
-# 无头浏览器跑通整个 UI 流程（mock 模式，不消耗 API）
-node verify-ui.mjs
+node scripts/verify.mjs mock          # 离线 mock 轨迹断言（strict + quick，不消耗 API）
+node scripts/verify.mjs fire          # 交叉验证守卫手术式测试（真实模型 + 真实 Tavily）
+node scripts/verify.mjs qa            # 报告追问手术式测试（范围内引用 / 范围外诚实拒答）
+node scripts/verify.mjs ui            # puppeteer 全流程回归（守卫卡+双向联动+打印+追问）
+node scripts/verify.mjs cache         # 搜索缓存单元测试（命中/一致性/异源补搜不读缓存）
 ```
 
-需要本机 Chrome；截图输出到 `.shots/`。
+- `mock` / `ui` 无需 API 密钥（演练模式），适合 CI
+- `fire` / `qa` / `cache` 需要 `TAVILY_API_KEY`（和真实模型密钥）
+- `ui` 模式需要本机 Chrome；截图与日志输出到 `.shots/`
+- npm 脚本等价：`pnpm run verify` / `pnpm run verify:ui`（若 pnpm 版本触发依赖策略检查，直接用上面的 node 调用）
 
 ## 迭代开发（worktree 约定）
 
