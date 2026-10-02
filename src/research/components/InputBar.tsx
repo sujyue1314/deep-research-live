@@ -127,7 +127,7 @@ export function InputBar({
             disabled={running}
             onClick={() => setMode("strict")}
           >
-            严格·三方会审
+            三方会审
           </button>
         </div>
         {running ? (

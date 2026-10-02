@@ -41,8 +41,8 @@ function hostOf(url: string) {
   }
 }
 
-// iter-21：「多智能体」是 AI 行话——改叫三方会审（调查员取证 → 质疑者开炮 → 裁决者判决）
-const MODE_NAME: Record<string, string> = { quick: "快查", deep: "深度", strict: "严格·三方会审" };
+// 「多智能体」是 AI 行话——改叫三方会审（调查员取证 → 质疑者开炮 → 裁决者判决）
+const MODE_NAME: Record<string, string> = { quick: "快查", deep: "深度", strict: "三方会审" };
 
 // 极简 markdown 渲染：列表行、加粗、[n] 引用条
 function renderLine(
