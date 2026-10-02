@@ -1767,6 +1767,20 @@ body {
 /* ≤900px（竖屏平板/手机）：三栏硬挤会让中列塌成 ~150px 不可用。
    改为单栏阅读流：轨迹 → 证据 → 计划 → 报告，整页滚动，面板自然高度 */
 @media (max-width: 900px) {
+  /* iter-21：基础层 body{overflow:hidden}（桌面 app-shell 模式）在移动布局从未
+     被覆盖——.rb-screen 放开 height:auto 后内容溢出，但 body 仍锁 100% 高 + hidden，
+     首屏以下被物理裁剪，页面完全无法上下滑动。解锁根容器，整页才能滚 */
+  html,
+  body,
+  #root {
+    height: auto;
+    min-height: 100%;
+  }
+
+  body {
+    overflow: visible;
+  }
+
   .rb-screen {
     height: auto;
     min-height: 100vh;
