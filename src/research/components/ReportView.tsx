@@ -12,6 +12,22 @@ interface Props {
   onAsk: (q: string) => void;
 }
 
+// C3 排版微调：中英文之间插 thin space（0.2em）、直引号转曲引号（按出现顺序配对）
+function typograf(s: string) {
+  let openQuote = true;
+  // 源码层用 \u2009 转义（thin space），避免文件被工具按普通空格写入
+  const spaced = s
+    .replace(/(?<=[\u4e00-\u9fa5])(?=[a-zA-Z0-9])/g, "\u2009")
+    .replace(/(?<=[a-zA-Z0-9])(?=[\u4e00-\u9fa5])/g, "\u2009");
+  return spaced
+    .replace(/"/g, () => {
+      const c = openQuote ? "“" : "”";
+      openQuote = !openQuote;
+      return c;
+    })
+    .replace(/'/g, "’");
+}
+
 // 极简 markdown 渲染：列表行、加粗、[n] 引用条
 function renderLine(
   text: string,
@@ -26,7 +42,7 @@ function renderLine(
         if (/^\*\*[^*]+\*\*$/.test(p)) {
           return (
             <strong key={i} className="md-bold">
-              {p.slice(2, -2)}
+              {typograf(p.slice(2, -2))}
             </strong>
           );
         }
@@ -46,7 +62,7 @@ function renderLine(
             </button>
           );
         }
-        return <span key={i}>{p}</span>;
+        return <span key={i}>{typograf(p)}</span>;
       })}
     </span>
   );
@@ -77,6 +93,8 @@ export function ReportView({ sections, oneLine, phase, onCiteClick, citeFocus, q
   }, [qa]);
 
   const canAsk = phase === "done" && sections.length > 0;
+  // 首字下沉候选：一句结论首字符为 CJK 或拉丁字母
+  const dcEligible = !!oneLine && /[一-龥A-Za-z]/.test(oneLine[0]);
 
   return (
     <div className="rb-panel rb-report">
@@ -99,7 +117,7 @@ export function ReportView({ sections, oneLine, phase, onCiteClick, citeFocus, q
         {oneLine && (
           <div className="rp-online">
             <span className="rp-online-tag">一句话结论</span>
-            <span>{oneLine}</span>
+            <span className={dcEligible ? "rp-dc" : ""}>{typograf(oneLine)}</span>
           </div>
         )}
         {sections.length === 0 && !oneLine && (
@@ -111,7 +129,7 @@ export function ReportView({ sections, oneLine, phase, onCiteClick, citeFocus, q
           <div className="rp-section" key={s.index}>
             <h3 className="rp-heading">
               <span className="rp-no">{s.index}</span>
-              {s.heading}
+              {typograf(s.heading)}
               <span className="rp-spacer" />
               {s.confidence && (
                 <span className={`rp-badge conf-${s.confidence === "高" ? "high" : s.confidence === "中" ? "mid" : "low"}`}>
@@ -140,6 +158,8 @@ export function ReportView({ sections, oneLine, phase, onCiteClick, citeFocus, q
             </div>
           </div>
         ))}
+        {/* 收尾印记：报告完整的编辑式终止符 */}
+        {phase === "done" && sections.length > 0 && <div className="rp-end-mark" />}
         {canAsk && (
           <div className="rb-qa">
             <div className="rb-qa-head">
@@ -152,7 +172,7 @@ export function ReportView({ sections, oneLine, phase, onCiteClick, citeFocus, q
                   {item.note && <div className="qa-note">{item.note}</div>}
                   <div className="qa-q">
                     <span className="qa-tag">问</span>
-                    {item.q}
+                    {typograf(item.q)}
                   </div>
                   <div className="qa-a">
                     {renderLine(item.a, onCiteClick, `qa-${item.id}`, citeFocus)}

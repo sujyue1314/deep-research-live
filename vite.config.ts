@@ -13,7 +13,9 @@ export default defineConfig({
     port: 5180,
     strictPort: true,
     // 工具的原子写入会留下 .*.tmpdir/ 瞬时目录，Windows 上 watch 会 EBUSY 崩溃；
-    // .wt 迭代目录与 .shots/.run 产物同样无需监听
+    // .wt 迭代目录与 .shots/.run 产物同样无需监听；
+    // worktree 另开 usePolling：Windows fsnotify 对「重命名覆盖」类编辑事件会静默丢失
+    // （表现为 vite 进程存活但永远服务旧模块），轮询在当前规模树上是零成本且确定性的
     watch: {
       ignored: [
         "**/.git/**",
@@ -24,6 +26,7 @@ export default defineConfig({
         "**/.*.tmpdir/**",
         "**/*.tmp",
       ],
+      ...(isWorktree ? { usePolling: true, interval: 500 } : {}),
     },
     proxy: {
       "/api": {

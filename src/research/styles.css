@@ -795,6 +795,16 @@ body {
   line-height: 1.6;
 }
 
+/* C3 首字下沉：一句结论首字符为 CJK 或拉丁字母时（.rp-dc 由 ReportView 条件加） */
+.rp-online > span.rp-dc::first-letter {
+  font-family: var(--serif);
+  font-size: 2.8em;
+  line-height: 1;
+  float: left;
+  margin: 5px 12px 0 0;
+  color: var(--clay-deep);
+}
+
 .rp-section {
   margin-bottom: 26px;
 }
@@ -823,6 +833,26 @@ body {
   font-size: 13.5px;
   line-height: 1.95;
   color: var(--ink);
+}
+
+/* C3 收尾印记：报告完稿后的编辑式终止符 */
+.rp-end-mark {
+  margin: 36px 0 4px;
+  text-align: center;
+}
+
+.rp-end-mark::before {
+  content: "";
+  display: block;
+  border-top: 1px solid var(--line);
+  width: 38%;
+  margin: 0 auto 12px;
+}
+
+.rp-end-mark::after {
+  content: "◆";
+  font-size: 7px;
+  color: var(--clay);
 }
 
 .rp-gap {
