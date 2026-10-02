@@ -64,6 +64,48 @@ export class ResearchSession {
     this._bus.setMaxListeners(50);
   }
 
+  /** 序列化：状态 + 全量事件日志（供持久化与跨进程回放） */
+  toJSON() {
+    return {
+      id: this.id,
+      question: this.question,
+      mode: this.mode,
+      mock: this.mock,
+      phase: this.phase,
+      createdAt: this.createdAt,
+      plan: this.plan,
+      principles: this.principles,
+      evidence: this.evidence,
+      sections: this.sections,
+      conflicts: this.conflicts,
+      stats: this.stats,
+      oneLine: this.oneLine,
+      qa: this.qa,
+      events: this._events,
+      closed: this.closed,
+      savedAt: Date.now(),
+    };
+  }
+
+  /** 反序列化：重建一个可回放/可追问的会话（校验上下文不恢复，仅用于直播后的重放） */
+  static fromJSON(data) {
+    const s = new ResearchSession({ question: data.question, mode: data.mode, mock: data.mock });
+    s.id = data.id || s.id;
+    s.phase = data.phase || "done";
+    s.createdAt = data.createdAt || s.createdAt;
+    s.plan = data.plan || [];
+    s.principles = data.principles || [];
+    s.evidence = data.evidence || [];
+    s.sections = data.sections || [];
+    s.conflicts = data.conflicts || [];
+    s.stats = data.stats || s.stats;
+    s.oneLine = data.oneLine ?? null;
+    s.qa = data.qa || [];
+    s._events = Array.isArray(data.events) ? data.events : [];
+    s.closed = !!data.closed;
+    return s;
+  }
+
   get state() {
     return {
       id: this.id,

@@ -4,8 +4,39 @@ import { ResearchSession } from "./session.js";
 import { runResearch } from "./agent.js";
 import { runFollowup } from "./qa.js";
 import { runMockResearch, runMockFollowup, MOCK_QUESTION } from "./mock.js";
+import { saveSession, loadSession } from "./persistence.js";
 
 const sessions = new Map();
+
+// 持久化订阅：关键事件节流写，done 立即写
+function attachSaveHooks(session) {
+  session.subscribe((evt) => {
+    if (evt.type === "done") saveSession(session, { immediate: true });
+    else if (
+      evt.type === "evidence" ||
+      evt.type === "section" ||
+      evt.type === "one-line" ||
+      evt.type === "qa-done" ||
+      evt.type === "conflict" ||
+      evt.type === "state"
+    ) {
+      saveSession(session);
+    }
+  });
+}
+
+/**
+ * 取会话：内存优先，未命中则从磁盘恢复（服务器重启后老链接仍可用）
+ */
+function getSession(id) {
+  const cached = sessions.get(id);
+  if (cached) return cached;
+  const loaded = loadSession(id);
+  if (!loaded) return null;
+  sessions.set(id, loaded);
+  attachSaveHooks(loaded); // 恢复的会话仍可通过追问变化
+  return loaded;
+}
 
 function json(res, code, obj) {
   res.writeHead(code, {
@@ -59,6 +90,7 @@ async function startResearchSession({ question, mode, mock }) {
   }
   const session = new ResearchSession({ question: finalQuestion, mode, mock: useMock });
   sessions.set(session.id, session);
+  attachSaveHooks(session);
   // 异步启动，不阻塞 HTTP 响应
   const runner = useMock ? runMockResearch : runResearch;
   runner(session).catch((e) => {
@@ -95,7 +127,7 @@ export async function handleResearch(req, res, url, method) {
   // SSE 事件流
   const sseMatch = url.match(/^\/api\/research\/stream\/([\w-]+)$/);
   if (method === "GET" && sseMatch) {
-    const s = sessions.get(sseMatch[1]);
+    const s = getSession(sseMatch[1]);
     if (!s) return json(res, 404, { error: "调查不存在" }), true;
     return attachSse(req, res, s), true;
   }
@@ -103,7 +135,7 @@ export async function handleResearch(req, res, url, method) {
   // 停止
   const stopMatch = url.match(/^\/api\/research\/([\w-]+)\/stop$/);
   if (method === "POST" && stopMatch) {
-    const s = sessions.get(stopMatch[1]);
+    const s = getSession(stopMatch[1]);
     if (!s) return json(res, 404, { error: "调查不存在" }), true;
     s.abort();
     s.emit({ type: "notice", text: "⏹ 已手动停止调查" });
@@ -113,7 +145,7 @@ export async function handleResearch(req, res, url, method) {
   // 报告追问（报告完稿后解锁）
   const askMatch = url.match(/^\/api\/research\/([\w-]+)\/ask$/);
   if (method === "POST" && askMatch) {
-    const s = sessions.get(askMatch[1]);
+    const s = getSession(askMatch[1]);
     if (!s) return json(res, 404, { error: "调查不存在" }), true;
     if (s.phase !== "done" || !s.evidence.length) {
       return json(res, 400, { error: "追问在报告完稿后解锁" }), true;
@@ -132,7 +164,7 @@ export async function handleResearch(req, res, url, method) {
   // 当前状态快照
   const stateMatch = url.match(/^\/api\/research\/([\w-]+)\/state$/);
   if (method === "GET" && stateMatch) {
-    const s = sessions.get(stateMatch[1]);
+    const s = getSession(stateMatch[1]);
     if (!s) return json(res, 404, { error: "调查不存在" }), true;
     return json(res, 200, { state: s.state }), true;
   }

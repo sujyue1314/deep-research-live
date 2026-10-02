@@ -126,6 +126,15 @@ export default function App() {
       .catch(() => {});
   }, []);
 
+  /* ---------- 分享链接回放：?session=<id> 直接订阅（不调 start） ---------- */
+  useEffect(() => {
+    const sid = new URLSearchParams(window.location.search).get("session");
+    if (!sid) return;
+    setSessionId(sid);
+    setPhase("running"); // 占位，state 事件到达后校正
+    setElapsed(0);
+  }, []);
+
   /* ---------- SSE 事件流 ---------- */
   useEffect(() => {
     if (!sessionId) return;
@@ -144,6 +153,8 @@ export default function App() {
         case "state": {
           const s = e.state;
           setPhase(s.phase === "error" ? "error" : s.phase === "done" ? "done" : "running");
+          if (s.question) setQuestion(s.question);
+          if (typeof s.mock === "boolean") setIsMock(s.mock);
           setPlan(s.plan || []);
           setPrinciples(s.principles || []);
           setEvidence(s.evidence || []);
@@ -425,6 +436,8 @@ export default function App() {
         isMock={isMock}
         onStop={handleStop}
         showStop={phase === "running"}
+        sessionId={sessionId}
+        onToast={showToast}
       />
       <div className="rb-grid">
         <div className="rb-col rb-col-left">

@@ -390,6 +390,111 @@ async function verifyCache() {
   return fail.length === 0;
 }
 
+/* ---------- 模式 6：分享链接 + 持久化恢复 ---------- */
+
+async function verifyShare() {
+  const fail = [];
+  const ok = (cond, msg) => (cond ? console.log("  ✓", msg) : (fail.push("✗ " + msg), console.log("  ✗", msg)));
+
+  const { saveSession, loadSession } = await importAbs(
+    path.join(ROOT, "server/research/persistence.js"),
+  );
+  const { ResearchSession } = await importAbs(path.join(ROOT, "server/research/session.js"));
+
+  console.log("1) 开一个 mock strict 会话并等完成");
+  const r = await startSession({
+    question: "上海近十年常住人口变化与背后原因",
+    mode: "strict",
+    mock: true,
+  });
+  const evts = [];
+  await subscribeSSE(
+    `${BASE}/api/research/stream/${r.id}`,
+    (ev) => evts.push(ev),
+    (ev) => ev.type === "done" || ev.type === "error",
+  );
+  const evidence = evts.filter((e) => e.type === "evidence");
+  ok(evidence.length === 5, `会话完成，证据 5 条（实际 ${evidence.length}）`);
+
+  console.log("2) 从磁盘重建（loadSession）");
+  const rebuilt = loadSession(r.id);
+  ok(!!rebuilt, "loadSession 返回会话");
+  if (rebuilt) {
+    ok(
+      Math.abs((rebuilt._events?.length || 0) - evts.length) <= 2,
+      `事件日志完整（磁盘 ${rebuilt._events?.length} vs 客户端 ${evts.length}）`,
+    );
+    ok(rebuilt.evidence.length === 5 && rebuilt.qa?.length === 0, "状态字段完整");
+  }
+
+  console.log("3) 服务器未见过但磁盘存在的 id → 路由自动恢复");
+  const ghost = new ResearchSession({ question: "磁盘恢复测试", mode: "quick", mock: true });
+  ghost.phase = "done";
+  ghost.evidence.push({
+    id: "e1", index: 1, url: "https://example.com/a",
+    title: "测试来源", quote: "测试引文。", note: "测试。",
+    tier: 1, tierLabel: "权威", verified: true, year: 2024,
+  });
+  ghost.sections.push({
+    index: 1, heading: "测试章节", markdown: "正文 [1]。", citations: [], crossVerified: true,
+  });
+  ghost._events.push({ type: "state", state: ghost.state }, { type: "evidence", ...ghost.evidence[0] });
+  ghost.closed = true;
+  saveSession(ghost, { immediate: true });
+  const stateRes = await fetch(`${BASE}/api/research/${ghost.id}/state`).then((x) => x.json());
+  ok(!!stateRes.state && stateRes.state.evidence?.length === 1, `GET /state 走磁盘恢复（${stateRes.error || "ok"}）`);
+
+  console.log("4) 分享链接回放页面（?session=<id>）");
+  const puppeteer = (await import("puppeteer-core")).default;
+  const browser = await puppeteer.launch({
+    executablePath: "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+    headless: "new",
+    args: ["--no-sandbox", "--disable-gpu", "--window-size=1600,900"],
+    protocolTimeout: 60000,
+  });
+  const page = await browser.newPage();
+  await page.setViewport({ width: 1600, height: 900 });
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  // 注意：回放页一加载就订阅 SSE，networkidle0 永远不会空闲 —— 用 domcontentloaded
+  await page.goto(`${BASE}/research.html?session=${r.id}`, {
+    waitUntil: "domcontentloaded",
+    timeout: 30000,
+  });
+  await page.waitForSelector(".ev-card", { timeout: 30000 });
+  await sleep(2500);
+  const replay = await page.evaluate(() => ({
+    evidence: document.querySelectorAll(".ev-card").length,
+    sections: document.querySelectorAll(".rp-section").length,
+    crossCards: document.querySelectorAll(".tr-challenge.cross").length,
+    oneLine: document.querySelector(".rp-online")?.textContent?.slice(0, 40),
+    shareBtn: !!document.querySelector(".rb-share-btn"),
+  }));
+  console.log("   ", JSON.stringify(replay));
+  ok(replay.evidence === 5, `回放页证据 5 张（实际 ${replay.evidence}）`);
+  ok(replay.sections === 3, `回放页报告 3 节（实际 ${replay.sections}）`);
+  ok(replay.crossCards === 1, "守卫卡回放");
+  ok(!!replay.shareBtn, "分享按钮存在");
+
+  console.log("5) 分享链接构造（data-share）");
+  // 注意：headless 下真实 Clipboard API 会锁死渲染进程，剪贴板交互留给真实浏览器手动验证；
+  // 这里验证链接构造（data-share 属性包含正确的 session id）
+  const dataShare = await page
+    .evaluate(() => document.querySelector(".rb-share-btn")?.getAttribute("data-share") || "")
+    .catch(() => "");
+  ok(dataShare.includes(`session=${r.id}`), `分享链接含 session id（${dataShare.slice(0, 60)}…）`);
+  try {
+    await page.screenshot({ path: path.join(SHOTS, "share-replay.png") });
+  } catch (e) {
+    console.log("   截图失败（不影响判定）:", e?.message);
+  }
+  await browser.close();
+  ok(errors.length === 0, "回放页无 JS 错误");
+
+  console.log(fail.length ? "share: FAIL" : "share: PASS");
+  return fail.length === 0;
+}
+
 /* ---------- 调度 ---------- */
 
 const modes = {
@@ -398,6 +503,7 @@ const modes = {
   qa: verifyQa,
   ui: verifyUi,
   cache: verifyCache,
+  share: verifyShare,
 };
 
 if (!modes[mode]) {
