@@ -336,6 +336,16 @@ async function verifyUi() {
   log("   范围内:", JSON.stringify(qa1).slice(0, 160));
   const qa2 = await askAndWait("北京人口是多少？");
   log("   范围外:", JSON.stringify(qa2).slice(0, 160));
+  // C3 排版探针：收尾印记 / 首字下沉候选 / thin space 生效（U+2009 = 8201）
+  const typo = await page.evaluate(() => ({
+    endMark: !!document.querySelector(".rp-end-mark"),
+    dc: !!document.querySelector(".rp-online span.rp-dc"),
+    thin: [...document.querySelectorAll(".rp-line, .rp-online > span:last-child")].reduce(
+      (n, el) => n + [...el.textContent].filter((c) => c.charCodeAt(0) === 8201).length,
+      0,
+    ),
+  }));
+  log("   C3:", JSON.stringify(typo));
   await page.screenshot({ path: path.join(SHOTS, "verify-final.png") });
 
   await browser.close();
@@ -351,6 +361,9 @@ async function verifyUi() {
   ok(printProbe.report !== "none" && printProbe.board !== "none", "打印媒体保留报告+证据");
   ok(qa1.a.includes("2480.5") && qa1.chips.length >= 1, "范围内追问带数据+引用");
   ok(/无法|没有.{0,6}(记录|数据|证据)/.test(qa2.a), "范围外追问诚实拒答");
+  ok(typo.endMark, "收尾印记（C3）");
+  ok(typo.dc, "首字下沉候选（C3）");
+  ok(typo.thin > 0, `中英文 thin space 生效（${typo.thin} 处，C3）`);
   ok(errors.filter((e) => !e.includes("404")).length === 0, "无页面错误（favicon 404 除外）");
   fail.forEach((f) => log(" ", f));
   log(fail.length ? "ui: FAIL" : "ui: PASS");
