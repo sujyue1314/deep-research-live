@@ -61,6 +61,7 @@ ${question}
   "thought": "用第一人称、口语化中文向观众解释你这一步的想法、判断和下一步打算（50-150 字）",
   "action": { "tool": "工具名", ...工具参数 }
 }
+注意：字符串值内部如需引用某词，用中文引号「」（不要用未转义的英文双引号 "，那会破坏 JSON）。
 
 【可用工具】
 1. update_plan — 第一步必须调用。先列「第一性要素」，再拆子问题。参数：
@@ -165,6 +166,48 @@ export function evidenceBrief(session) {
         `证据 #${e.index} [${e.tierLabel}来源${e.verified ? "·引文已核验" : "·引文未核验"}${e.year ? `·${e.year}` : ""}·域名 ${hostOf(e.url)}]\n标题：${e.title}\nURL：${e.url}\n引文：“${e.quote}”\n说明：${e.note}`,
     )
     .join("\n\n");
+}
+
+/**
+ * iter-18：模型输出格式诊断（纯函数，供主循环与单测共用）
+ * 返回一句话诊断：缺 action / 缺 tool / JSON 解析失败（带位置与片段，并点出
+ * 未转义英文双引号这一实测最高频的根因——rs_95967da1 第 2 步 position 85）。
+ * 合法输出返回空串。
+ */
+export function diagnoseActionOutput(content, parsed) {
+  if (parsed && typeof parsed === "object") {
+    if (!parsed.action || typeof parsed.action !== "object") {
+      return `这次输出可解析，但缺少 action 字段（外层只有 ${Object.keys(parsed).join("/") || "空对象"}）。`;
+    }
+    const keys = Object.keys(parsed.action);
+    if (!parsed.action.tool) {
+      // 按字段特征给出「该怎么补」的提示（仍是让模型自己重发，不代它执行）
+      const infer =
+        keys.some((k) => k === "principles" || k === "subquestions")
+          ? "看字段是要更新调查计划，请补 \"tool\": \"update_plan\"。"
+          : keys.includes("heading") || keys.includes("markdown")
+            ? "看字段是要写报告章节，请补 \"tool\": \"write_section\"。"
+            : keys.includes("query")
+              ? "看字段是要检索，请补 \"tool\": \"web_search\"。"
+              : "";
+      return `action 缺少 "tool" 字段（当前字段：${keys.join("/") || "空"}）。${infer}`;
+    }
+    return "";
+  }
+  // parsed 为空：raw 解析拿原生报错（含位置）
+  let err = "无法解析";
+  try {
+    JSON.parse(String(content ?? ""));
+  } catch (e) {
+    err = String(e?.message || e).slice(0, 120);
+  }
+  const m = err.match(/position (\d+)/);
+  const pos = m ? Number(m[1]) : null;
+  const snippet =
+    pos != null && typeof content === "string"
+      ? `出错位置附近：…${JSON.stringify(content.slice(Math.max(0, pos - 14), pos + 14))}…。`
+      : "";
+  return `JSON 解析失败：${err}。${snippet}常见原因：字符串值内出现未转义的英文双引号（例 "社会进步"）——值内引号请写成 \\" 或改用中文引号「」。`;
 }
 
 /* ---------- 源多样性守卫 ---------- */
@@ -570,12 +613,15 @@ async function investigatorLoop(session, opts = {}) {
     if (!action || typeof action !== "object" || !action.tool) {
       invalidStreak += 1;
       const empty = !result?.content;
+      // iter-18：精确反馈——旧提示只有「输出格式不正确」五个字，
+      // model 只能瞎猜（rs_95967da1 里它把未转义英文引号误诊成「中文引号」，白烧两步）。
+      // 现在把缺什么、错在哪、怎么改写清楚，让模型一步改对。
       messages.push({
         role: "user",
         content: empty
           ? "【系统】上一步没有输出任何内容（推理耗尽了输出预算）。请直接输出 JSON：{\"thought\": \"向观众解释这一步（50-150字）\", \"action\": {\"tool\": \"...\", ...参数}}，不要做冗长推理。"
-          : "【系统】输出格式不正确。必须输出 JSON：{\"thought\": \"...\", \"action\": {\"tool\": \"...\", ...}}。" +
-            `可用工具：${[...ALLOWED_TOOLS].join("、")}。`,
+          : `【系统】${diagnoseActionOutput(result.content, parsed)}` +
+            `必须输出 JSON：{\"thought\": \"...\", \"action\": {\"tool\": \"...\", ...}}。可用工具：${[...ALLOWED_TOOLS].join("、")}。`,
       });
       if (invalidStreak >= 3) {
         session.emit({ type: "notice", text: "连续格式异常，直接收尾" });
