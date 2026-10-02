@@ -241,7 +241,8 @@ body {
 .rb-grid {
   flex: 1;
   display: grid;
-  grid-template-columns: 320px minmax(0, 1fr) 400px;
+  /* iter-13：报告加宽（400→460），正文 343→404px，更接近杂志栏宽 */
+  grid-template-columns: 300px minmax(0, 1fr) 460px;
   gap: 0;
   min-height: 0;
 }
@@ -287,10 +288,11 @@ body {
 }
 
 /* 右栏纵向配比（iter-7）：报告是主角，原则/计划压成限高参考屉
-   —— 否则两面板自然高度会把报告挤成一小条（900px 视口下仅剩 153px/24%） */
+   —— 否则两面板自然高度会把报告挤成一小条（900px 视口下仅剩 153px/24%。
+   iter-13：放宽到 34%，4 项计划可完整显示（170px 需求 < 218px 上限），报告仍占 60%+ */
 .rb-col-right .rb-panel:not(.rb-report) {
   flex: 0 0 auto;
-  max-height: 20%;
+  max-height: 34%;
 }
 
 /* 表头钉住，列表内部滚动 */
@@ -1298,11 +1300,84 @@ body {
   min-width: 18px;
 }
 
-/* ---------- 窄屏适配 ---------- */
+/* ---------- 窄屏适配（iter-13 重写） ---------- */
+
+@media (max-width: 1280px) {
+  .rb-grid {
+    grid-template-columns: 280px minmax(0, 1fr) 400px;
+  }
+}
 
 @media (max-width: 1100px) {
   .rb-grid {
-    grid-template-columns: 280px minmax(0, 1fr) 340px;
+    grid-template-columns: 240px minmax(0, 1fr) 360px;
+  }
+}
+
+/* ≤900px（竖屏平板/手机）：三栏硬挤会让中列塌成 ~150px 不可用。
+   改为单栏阅读流：轨迹 → 证据 → 计划 → 报告，整页滚动，面板自然高度 */
+@media (max-width: 900px) {
+  .rb-screen {
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
+  }
+  .rb-header {
+    flex-wrap: wrap;
+    gap: 12px 20px;
+    padding: 14px 20px 10px;
+  }
+  .rb-grid {
+    display: flex;
+    flex-direction: column;
+    flex: none;
+  }
+  .rb-col {
+    border: none;
+    padding: 0 20px 20px;
+  }
+  /* 面板自然高度；轨迹限高内滚，证据/计划/报告放开由整页滚动 */
+  .rb-col .rb-panel {
+    flex: none;
+  }
+  .rb-col-left .rb-panel {
+    max-height: 420px;
+  }
+  .rb-col-right .rb-panel:not(.rb-report) {
+    max-height: none;
+  }
+  .rb-report-body,
+  .rb-board-body {
+    overflow: visible;
+  }
+  .rb-inputbar {
+    padding: 12px 20px 16px;
+  }
+  .ib-main {
+    flex-wrap: wrap;
+  }
+  .ib-input {
+    min-width: 0;
+    flex: 1 1 240px;
+  }
+}
+
+/* ≤640px 手机：报头统计只留状态+计时，输入区进一步收紧 */
+@media (max-width: 640px) {
+  .rb-hstats .rb-stat:nth-child(n + 3) {
+    display: none;
+  }
+  .rb-title {
+    font-size: 26px;
+  }
+  .ib-mode {
+    width: 100%;
+  }
+  .ib-mode .ib-seg {
+    flex: 1;
+  }
+  .rb-btn-primary {
+    width: 100%;
   }
 }
 
