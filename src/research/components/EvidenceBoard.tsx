@@ -68,9 +68,12 @@ export function EvidenceBoard({
         </span>
       </div>
       <div className="rb-board-body">
-        <div className="rb-question">
-          <span className="rb-q-text">{question || "（研究问题将列在此处）"}</span>
-        </div>
+        {/* iter-22：议题由刊首下方的 standfirst 独占刊出，中栏只在 idle 留占位 */}
+        {phase === "idle" && (
+          <div className="rb-question">
+            <span className="rb-q-text">{question || "（研究问题将列在此处）"}</span>
+          </div>
+        )}
         {conflicts.map((c) => (
           <div className="rb-conflict" key={c.id}>
             <div className="tr-c-head">分歧</div>

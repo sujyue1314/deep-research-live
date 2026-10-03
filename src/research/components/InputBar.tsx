@@ -15,7 +15,12 @@ interface Props {
   hasKey: boolean;
   forceMock: boolean;
   setForceMock: (b: boolean) => void;
+  // iter-22：上置后的输入区在非 idle 态退化为「议题导语」——
+  // 直播/回放时这一带不再放一张置灰的表单，而是刊出当前正在调查的问题
+  question: string | null;
 }
+
+const MODE_NAME: Record<string, string> = { quick: "快查", deep: "深度", strict: "三方会审" };
 
 export function InputBar({
   value,
@@ -31,6 +36,7 @@ export function InputBar({
   hasKey,
   forceMock,
   setForceMock,
+  question,
 }: Props) {
   const running = phase === "running";
   const presetRef = useRef<HTMLDivElement | null>(null);
@@ -40,6 +46,36 @@ export function InputBar({
     if (!el) return;
     el.scrollBy({ left: dir * Math.max(240, el.clientWidth * 0.6), behavior: "smooth" });
   };
+
+  // iter-22：非 idle —— 议题导语（standfirst）：问题刊在这一带，操作按钮靠右
+  if (phase !== "idle") {
+    const done = phase === "done" || phase === "error";
+    return (
+      <div className="rb-inputbar rb-standfirst-bar">
+        <div className="sf-left">
+          <div className="sf-tag">
+            {running ? "正在调查" : done ? "本案议题" : ""} · {MODE_NAME[mode] || "快查"}
+          </div>
+          <div className="sf-text">{question || value}</div>
+        </div>
+        {/* running 态的停止按钮只在刊号线出现一次（Header showStop），
+            这里重复会与 dateline 撞车 */}
+        <div className="sf-actions">
+          {running ? null : (
+            <>
+              <button className="rb-btn rb-btn-primary" onClick={onStart}>
+                换个问题重来
+              </button>
+              <button className="rb-btn rb-btn-ghost" onClick={onReset}>
+                清空
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="rb-inputbar">
       <div className="ib-row ib-presets-wrap">
@@ -79,7 +115,6 @@ export function InputBar({
         </button>
       </div>
       <div className="ib-row ib-main">
-        <span className="ib-prefix">研究问题</span>
         <input
           className="ib-input"
           placeholder="输入一个开放研究问题，例如：上海近十年常住人口变化与背后原因"
@@ -107,7 +142,7 @@ export function InputBar({
             演练模式
           </label>
         )}
-        <div className="ib-mode" title="严格模式：调查员 → 质疑者 → 裁决者三方辩论">
+        <div className="ib-mode" title="三方会审：调查员 → 质疑者 → 裁决者三方辩论">
           <button
             className={mode === "quick" ? "ib-seg on" : "ib-seg"}
             disabled={running}
@@ -130,28 +165,13 @@ export function InputBar({
             三方会审
           </button>
         </div>
-        {running ? (
-          <button className="rb-btn rb-btn-warn" onClick={onStop}>
-            停止
-          </button>
-        ) : phase === "done" || phase === "error" ? (
-          <>
-            <button className="rb-btn rb-btn-primary" onClick={onStart}>
-              换个问题重来
-            </button>
-            <button className="rb-btn rb-btn-ghost" onClick={onReset}>
-              清空
-            </button>
-          </>
-        ) : (
-          <button
-            className="rb-btn rb-btn-primary"
-            onClick={onStart}
-            disabled={!value.trim()}
-          >
-            开始调查
-          </button>
-        )}
+        <button
+          className="rb-btn rb-btn-primary"
+          onClick={onStart}
+          disabled={!value.trim()}
+        >
+          开始调查
+        </button>
       </div>
     </div>
   );

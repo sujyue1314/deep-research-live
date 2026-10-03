@@ -253,6 +253,13 @@ async function verifyUi() {
 
   log("1) mock + strict 启动");
   await page.goto(`${BASE}/research.html`, { waitUntil: "networkidle0", timeout: 30000 });
+  // iter-22：箭头滚动须在 idle 态测——完稿后输入区退化为议题导语（.rb-standfirst-bar），
+  // 预设行与箭头不再渲染；旧测法在 done 态点击箭头必然 0→0
+  const arrowIdleBefore = await page.evaluate(() => document.querySelector(".ib-presets")?.scrollLeft ?? 0);
+  await page.evaluate(() => [...document.querySelectorAll(".ib-scroll-btn")].pop()?.click());
+  await sleep(1000);
+  const arrowIdleAfter = await page.evaluate(() => document.querySelector(".ib-presets")?.scrollLeft ?? 0);
+  log("1a) 灵感条箭头（idle）:", `${arrowIdleBefore}→${arrowIdleAfter}`);
   await page.click(".ib-chip");
   await page.click(".ib-mock input");
   await page.click(".ib-mode .ib-seg:last-child");
@@ -427,10 +434,16 @@ async function verifyUi() {
   // iter-15 交互探针（须在 browser.close() 之前：涉及真实点击与取值）
   const it15 = await page.evaluate(() => ({
     stageOn: document.querySelector(".rb-grid")?.className.includes("rb-grid-stage-report") ?? false,
-    arrowBtns: document.querySelectorAll(".ib-scroll-btn").length,
     stageSwitch: !!document.querySelector(".rb-stage-switch"),
   }));
   log("   iter-15:", JSON.stringify(it15));
+  // iter-22：完稿态输入区应为议题导语——无表单控件，右侧挂「换个问题重来/清空」
+  const sf = await page.evaluate(() => ({
+    text: document.querySelector(".sf-text")?.textContent?.trim().slice(0, 24) ?? null,
+    actions: [...document.querySelectorAll(".sf-actions .rb-btn")].map((b) => b.textContent.trim()),
+    noForm: !document.querySelector(".ib-presets"),
+  }));
+  log("   standfirst:", JSON.stringify(sf));
   await page.click(".rb-stage-switch .ib-seg:last-of-type").catch(() => {});
   await sleep(500);
   const processGear = await page.evaluate(() => {
@@ -440,12 +453,6 @@ async function verifyUi() {
       trajNoHOverflow: l ? l.scrollWidth <= l.clientWidth + 2 : null,
     };
   });
-  // 箭头滚动是 smooth 动画 —— 点击后等动画再读
-  const arrowBefore = await page.evaluate(() => document.querySelector(".ib-presets")?.scrollLeft ?? 0);
-  await page.evaluate(() => [...document.querySelectorAll(".ib-scroll-btn")].pop()?.click());
-  await sleep(1000);
-  const arrowAfter = await page.evaluate(() => document.querySelector(".ib-presets")?.scrollLeft ?? 0);
-  processGear.arrowsWork = { before: arrowBefore, after: arrowAfter };
   log("   过程视图:", JSON.stringify(processGear));
 
   await browser.close();
@@ -477,8 +484,12 @@ async function verifyUi() {
   ok(processGear.stageOff, "舞台可切回全过程（iter-15）");
   ok(processGear.trajNoHOverflow === true, "时间线无横向溢出（iter-15）");
   ok(
-    processGear.arrowsWork && processGear.arrowsWork.after > processGear.arrowsWork.before,
-    `灵感条箭头可滚动（${processGear.arrowsWork?.before}→${processGear.arrowsWork?.after}，iter-15）`,
+    arrowIdleAfter > arrowIdleBefore,
+    `灵感条箭头可滚动（${arrowIdleBefore}→${arrowIdleAfter}，idle 态，iter-22）`,
+  );
+  ok(
+    !!sf.text && sf.noForm && sf.actions.includes("换个问题重来") && sf.actions.includes("清空"),
+    `完稿态输入区退化为议题导语（iter-22）`,
   );
   ok(
     !!trunc && /[。！？）】”]/.test(trunc?.tail?.slice(-1) || ""),

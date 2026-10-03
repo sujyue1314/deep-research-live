@@ -508,6 +508,23 @@ export default function App() {
         stageView={stageView}
         onStageChange={setStageView}
       />
+      {/* iter-22：刊首式骨架——输入区上置到报头下方，非 idle 态退化为议题导语 */}
+      <InputBar
+        value={input}
+        setValue={setInput}
+        presets={PRESETS}
+        onRandom={onRandom}
+        mode={mode}
+        setMode={setMode}
+        phase={phase}
+        onStart={handleStart}
+        onStop={handleStop}
+        onReset={handleReset}
+        hasKey={hasKey}
+        forceMock={forceMock}
+        setForceMock={setForceMock}
+        question={question}
+      />
       <div className={`rb-grid${stageClass}`}>
         <div className="rb-col rb-col-left">
           <TrajectoryStream entries={traj} phase={phase} />
@@ -543,21 +560,6 @@ export default function App() {
           />
         </div>
       </div>
-      <InputBar
-        value={input}
-        setValue={setInput}
-        presets={PRESETS}
-        onRandom={onRandom}
-        mode={mode}
-        setMode={setMode}
-        phase={phase}
-        onStart={handleStart}
-        onStop={handleStop}
-        onReset={handleReset}
-        hasKey={hasKey}
-        forceMock={forceMock}
-        setForceMock={setForceMock}
-      />
       {toast && <div className="rb-toast">{toast}</div>}
     </div>
   );

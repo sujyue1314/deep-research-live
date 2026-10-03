@@ -1,20 +1,24 @@
-/* 「探照灯」编辑/海报风格（Anthropic 式）：暖纸底 × 陶土橙 × 衬线展示字 × 发丝线 */
+/* iter-22：现代杂志骨架（刊首式原型 A）——大留白、细衬线（仿宋）、低饱和暖纸 */
 :root {
-  --bg: #efebe3;
+  --bg: #f4f1ea;
   --bg-soft: #f6f3ed;
-  --panel: #faf8f4;
-  --ink: #1a1916;
-  --ink-dim: #58554d;
-  --ink-faint: #8c8880;
-  --clay: #c96f47;
-  --clay-deep: #a84f2c;
-  --clay-soft: #f3e3d8;
-  --line: #d8d3c8;
-  --line-strong: #1a1916;
-  --red: #a8332a;
+  --panel: #faf8f3;
+  --ink: #26231e;
+  --ink-dim: #6e6a60;
+  --ink-faint: #a9a39a;
+  --clay: #b0663f;
+  --clay-deep: #8f4e2e;
+  --clay-soft: #f3e4d9;
+  --line: #e3ded3;
+  --line-strong: #26231e;
+  --red: #a13a30;
   --red-soft: #f6e7e4;
-  --green: #4e7a4a;
-  --serif: Georgia, "Songti SC", "STSong", "SimSun", "Times New Roman", serif;
+  --green: #587552;
+  /* 栏边距/栏间距用变量驱动，媒体查询只改这两个值，刊首与三栏永远对齐 */
+  --edge: 64px;
+  --gut: 32px;
+  --serif: "FangSong", "STFangsong", "Songti SC", "STSong", "SimSun", Georgia,
+    "Times New Roman", serif;
   --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
     "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
   --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
@@ -45,78 +49,110 @@ body {
   height: 100vh;
 }
 
-/* ---------- 报头（masthead） ---------- */
+/* ---------- 报头：刊首（masthead）+ 刊号线（dateline） ---------- */
 
 .rb-header {
   display: flex;
-  align-items: flex-end;
-  gap: 20px;
-  padding: 12px 28px 8px; /* iter-14：报头让出纵向空间给报告 */
+  flex-direction: column;
   background: var(--bg);
-  border-bottom: 1px solid var(--ink);
+  border-bottom: 1px solid var(--line); /* iter-22：粗墨线退为发丝线 */
   flex-shrink: 0;
 }
 
-.rb-brand {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
+.rb-masthead {
+  padding: 34px var(--edge) 0;
 }
 
 .rb-kicker {
-  font-size: 11px;
-  letter-spacing: 4px;
+  font-size: 10.5px;
+  letter-spacing: 6px;
   color: var(--clay-deep);
   text-transform: uppercase;
   font-weight: 600;
 }
 
 .rb-title {
-  margin: 0;
+  margin: 8px 0 6px;
   font-family: var(--serif);
-  font-size: 34px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  line-height: 1;
+  font-size: 64px;
+  font-weight: 400; /* 仿宋本体内收，不加粗 */
+  letter-spacing: 8px;
+  line-height: 1.02;
   color: var(--ink);
 }
 
 .rb-sub {
   font-size: 11.5px;
   color: var(--ink-faint);
-  letter-spacing: 1.5px;
+  letter-spacing: 2.5px;
+}
+
+/* 刊号线：状态/统计一行 mono，右侧挂操作 */
+.rb-dateline {
+  margin: 20px var(--edge) 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  padding: 9px 0;
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  flex-wrap: wrap;
 }
 
 .rb-hstats {
   display: flex;
   align-items: center;
-  margin-left: auto;
   gap: 0;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 1px;
+  color: var(--ink-dim);
 }
 
 .rb-stat {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 62px;
-  padding: 0 14px;
+  padding: 0 22px;
   border-left: 1px solid var(--line);
+  white-space: nowrap;
 }
 
-.rb-stat-label {
-  font-size: 9.5px;
-  letter-spacing: 2px;
-  color: var(--ink-faint);
-  text-transform: uppercase;
+.rb-stat:first-child {
+  padding-left: 0;
+  border-left: none;
 }
 
 .rb-stat-val {
-  font-size: 14px;
+  font-family: var(--mono);
+  font-size: 10.5px;
   color: var(--ink);
+  font-weight: 400;
+  margin-left: 3px;
+}
+
+/* 状态项：live 点 + 彩色字，与计数器同基线 */
+.rb-stat-live {
+  color: var(--clay-deep);
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+}
+
+.rb-stat-live .rb-dot {
+  margin-right: 7px;
+}
+
+.rb-dl-actions {
+  margin-left: auto;
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-family: var(--mono);
+  gap: 14px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.rb-dl-no {
+  font-size: 10px;
+  color: var(--ink-faint);
+  letter-spacing: 0.6px;
 }
 
 .rb-dot {
@@ -241,9 +277,9 @@ body {
 .rb-grid {
   flex: 1;
   display: grid;
-  /* iter-14：左栏收窄（300→280），中列让给证据卡双列；
-     报告列 460 不动（正文 403px 是已验证的杂志栏宽） */
-  grid-template-columns: 280px minmax(0, 1fr) 460px;
+  /* iter-22：刊首式骨架——三栏轨道放宽，竖分隔线全部撤掉，纯留白分隔；
+     报告列 500 → 内容 404px（沿用已验证的杂志栏宽） */
+  grid-template-columns: 300px minmax(0, 1fr) 500px;
   gap: 0;
   min-height: 0;
 }
@@ -256,20 +292,17 @@ body {
   padding: 0 0 12px;
 }
 
+/* iter-22：栏间 --gut、缘 --edge，均以变量随断点缩放 */
 .rb-col-left {
-  border-right: 1px solid var(--line);
-  padding-right: 14px;
-  padding-left: 28px; /* 与报头内容对齐 */
+  padding: 0 var(--gut) 12px var(--edge);
 }
 
 .rb-col-center {
-  padding: 0 28px;
+  padding: 0 var(--gut) 12px;
 }
 
 .rb-col-right {
-  border-left: 1px solid var(--line);
-  padding-left: 28px;
-  padding-right: 28px;
+  padding: 0 var(--edge) 12px var(--gut);
   gap: 22px;
 }
 
@@ -314,8 +347,7 @@ body {
 
 .rb-grid-stage-report .rb-col-right {
   order: 1;
-  border-left: none;
-  padding: 0 28px 12px;
+  padding: 0 var(--edge) 12px;
 }
 
 .rb-grid-stage-report .rb-col-right .rb-report {
@@ -353,13 +385,13 @@ body {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  padding: 16px 0 10px;
-  font-size: 11px;
+  padding: 18px 0 12px;
+  font-size: 10px;
   font-weight: 600;
-  letter-spacing: 3px;
+  letter-spacing: 3.5px;
   text-transform: uppercase;
   color: var(--clay-deep);
-  border-bottom: 1px solid var(--ink);
+  border-bottom: 1px solid var(--line); /* iter-22：墨线退为发丝线 */
   flex-shrink: 0;
 }
 
@@ -792,7 +824,7 @@ body {
   max-width: 680px;
   margin: 6px 0 26px;
   padding: 0 0 14px;
-  border-bottom: 2px solid var(--ink);
+  border-bottom: 1px solid var(--line);
 }
 
 .rb-q-pin {
@@ -801,32 +833,35 @@ body {
 
 .rb-q-text {
   font-family: var(--serif);
-  font-size: 22px;
-  font-weight: 700;
-  line-height: 1.5;
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 1.55;
   color: var(--ink);
+  letter-spacing: 0.5px;
 }
 
 /* iter-14：阈值 300→230 —— 1366~1536 这一段原为单列大卡（548px），
    中列加宽后双列可恢复，证据不再堆成狭长列表 */
+/* iter-22：证据卡去格线——横向靠 1px 纸缝留白，纵向发丝线分行 */
 .rb-cards {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
   gap: 1px;
-  background: var(--line);
-  border: 1px solid var(--line);
+  background: transparent;
+  border-top: 1px solid var(--line);
 }
 
 .ev-card {
   position: relative;
-  background: var(--panel);
+  background: transparent;
   color: var(--ink);
   padding: 20px 18px 14px;
+  border-bottom: 1px solid var(--line);
   transition: background 0.2s;
 }
 
 .ev-card:hover {
-  background: #fffefa;
+  background: var(--bg-soft);
 }
 
 .ev-pin {
@@ -916,7 +951,7 @@ body {
 @keyframes cardFlash {
   0%,
   100% {
-    background: var(--panel);
+    background: transparent; /* iter-22：卡片透明底，闪要以纸底为基 */
   }
   30%,
   60% {
@@ -1281,11 +1316,51 @@ body {
 
 /* ---------- 输入栏 ---------- */
 
+/* iter-22：输入区上置到刊首下方（原型 A 的 compose 区）。
+   非 idle 态由 InputBar 切换为 .rb-standfirst-bar 议题导语 */
 .rb-inputbar {
   background: var(--bg);
-  border-top: 1px solid var(--ink);
-  padding: 14px 28px 18px;
+  border-bottom: 1px solid var(--line);
+  padding: 18px var(--edge) 20px;
   flex-shrink: 0;
+}
+
+/* 议题导语：直播/回放/完稿时这一带刊出当前问题，不留置灰表单 */
+.rb-standfirst-bar {
+  display: flex;
+  align-items: center;
+  gap: 26px;
+  flex-wrap: wrap;
+  padding: 16px var(--edge);
+}
+
+.sf-left {
+  min-width: 0;
+  flex: 1 1 60%;
+}
+
+.sf-tag {
+  font-size: 10px;
+  letter-spacing: 3.5px;
+  color: var(--clay-deep);
+  font-weight: 600;
+}
+
+.sf-text {
+  font-family: var(--serif);
+  font-size: 21px;
+  line-height: 1.55;
+  color: var(--ink);
+  margin-top: 6px;
+  letter-spacing: 0.5px;
+}
+
+.sf-actions {
+  display: flex;
+  gap: 10px;
+  flex-shrink: 0;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
 .ib-row {
@@ -1372,15 +1447,6 @@ body {
   color: var(--clay-deep);
 }
 
-.ib-prefix {
-  font-size: 10px;
-  letter-spacing: 2.5px;
-  color: var(--clay-deep);
-  text-transform: uppercase;
-  flex-shrink: 0;
-  font-weight: 600;
-}
-
 .ib-input {
   flex: 1;
   min-width: 0;
@@ -1388,8 +1454,9 @@ body {
   border: none;
   border-bottom: 1px solid var(--ink);
   color: var(--ink);
-  font-size: 15px;
+  font-size: 19px;
   font-family: var(--serif);
+  letter-spacing: 1px;
   padding: 8px 4px;
   outline: none;
 }
@@ -1453,9 +1520,10 @@ body {
 
 /* ---------- 提示 ---------- */
 
+/* iter-22：刊首占满顶部，提示条移到底部中央 */
 .rb-toast {
   position: fixed;
-  top: 90px;
+  bottom: 28px;
   left: 50%;
   transform: translateX(-50%);
   background: var(--ink);
@@ -1749,16 +1817,24 @@ body {
 }
 
 @media (max-width: 1280px) {
+  :root {
+    --edge: 48px;
+    --gut: 28px;
+  }
   .rb-grid {
-    grid-template-columns: 240px minmax(0, 1fr) 420px;
+    grid-template-columns: 260px minmax(0, 1fr) 460px;
   }
 }
 
 @media (max-width: 1100px) {
-  .rb-grid {
-    grid-template-columns: 220px minmax(0, 1fr) 360px;
+  :root {
+    --edge: 36px;
+    --gut: 22px;
   }
-  /* 报头副标题让位：1100 以下统计区与品牌挤 */
+  .rb-grid {
+    grid-template-columns: 232px minmax(0, 1fr) 400px;
+  }
+  /* 报头副标题让位：1100 以下刊号线与品牌挤 */
   .rb-sub {
     display: none;
   }
@@ -1767,6 +1843,10 @@ body {
 /* ≤900px（竖屏平板/手机）：三栏硬挤会让中列塌成 ~150px 不可用。
    改为单栏阅读流：轨迹 → 证据 → 计划 → 报告，整页滚动，面板自然高度 */
 @media (max-width: 900px) {
+  :root {
+    --edge: 20px;
+    --gut: 20px;
+  }
   /* iter-21：基础层 body{overflow:hidden}（桌面 app-shell 模式）在移动布局从未
      被覆盖——.rb-screen 放开 height:auto 后内容溢出，但 body 仍锁 100% 高 + hidden，
      首屏以下被物理裁剪，页面完全无法上下滑动。解锁根容器，整页才能滚 */
@@ -1785,13 +1865,18 @@ body {
     height: auto;
     min-height: 100vh;
     overflow: visible;
-    /* iter-14：输入栏吸底（fixed），留出通行高度防内容被遮 */
-    padding-bottom: 240px;
   }
-  .rb-header {
-    flex-wrap: wrap;
-    gap: 12px 20px;
-    padding: 14px 20px 10px;
+  /* iter-22：刊首在移动端收窄留白，刊号线照常折行 */
+  .rb-masthead {
+    padding: 20px var(--edge) 0;
+  }
+  .rb-title {
+    font-size: 38px;
+    letter-spacing: 5px;
+  }
+  .rb-dateline {
+    margin: 14px var(--edge) 0;
+    gap: 12px;
   }
   .rb-grid {
     display: flex;
@@ -1800,7 +1885,7 @@ body {
   }
   .rb-col {
     border: none;
-    padding: 0 20px 20px;
+    padding: 0 var(--edge) 20px;
   }
   /* 面板自然高度；轨迹限高内滚，证据/计划/报告放开由整页滚动 */
   .rb-col .rb-panel {
@@ -1822,16 +1907,9 @@ body {
     max-width: 38em;
     margin: 0 auto;
   }
-  /* iter-14：输入栏吸底 —— 首屏即见入口，不必滚过 4 个空面板 */
+  /* iter-22：输入区已上置刊首下方，移动端首屏可见，不再吸底 */
   .rb-inputbar {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 50;
-    padding: 12px 20px 16px;
-    box-shadow: 0 -10px 28px rgba(26, 25, 22, 0.1);
-    border-top: 1px solid var(--ink);
+    padding: 14px var(--edge) 16px;
   }
   .ib-main {
     flex-wrap: wrap;
@@ -1844,7 +1922,7 @@ body {
      报告 order:1 在前、证据 order:2 随后） */
   .rb-grid-stage-report .rb-col-right {
     border-right: none;
-    padding: 0 20px 20px;
+    padding: 0 var(--edge) 20px;
     max-width: 38em;
     margin: 0 auto;
   }
@@ -1852,17 +1930,15 @@ body {
 
 /* ≤640px 手机：报头统计只留状态+计时，输入区进一步收紧 */
 @media (max-width: 640px) {
-  .rb-screen {
-    padding-bottom: 320px; /* 吸底输入栏换行后更高（360px 回放态 290px），补足通行高度 */
-  }
   .rb-hstats .rb-stat:nth-child(n + 3) {
     display: none;
   }
   .rb-title {
     font-size: 26px;
   }
-  .ib-prefix {
-    display: none; /* 前缀让位给输入框，占位说明已足够 */
+  /* iter-22：议题导语在手机上独占一行，操作按钮折到下一行 */
+  .rb-standfirst-bar .sf-left {
+    flex: 1 1 100%;
   }
   .ib-mode {
     width: 100%;
