@@ -120,7 +120,7 @@ node scripts/verify.mjs cache         # 搜索缓存单元测试（命中/一致
 
 - `mock` / `ui` 无需 API 密钥（演练模式），适合 CI
 - `fire` / `qa` / `cache` 需要 `TAVILY_API_KEY`（和真实模型密钥）
-- `ui` 模式需要本机 Chrome；截图与日志输出到 `.shots/`
+- `ui` 模式需要本机 Chrome（默认探测常见安装位置；可用 `CHROME_PATH` 环境变量覆盖），截图与日志输出到 `.shots/`
 - npm 脚本等价：`pnpm run verify` / `pnpm run verify:ui`（若 pnpm 版本触发依赖策略检查，直接用上面的 node 调用）
 
 ## 迭代开发（worktree 约定）

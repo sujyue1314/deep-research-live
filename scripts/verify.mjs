@@ -18,6 +18,10 @@ const importAbs = (p) => import(pathToFileURL(p).href);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");
 const BASE = process.env.DEMO_BASE || "http://127.0.0.1:5180";
+// ui 模式的 Chrome 路径：CHROME_PATH 环境变量优先，再试常见安装位置
+const CHROME_PATH =
+  process.env.CHROME_PATH ||
+  ["C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe", "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe"].find((p) => fs.existsSync(p));
 const SHOTS = path.join(ROOT, ".shots");
 fs.mkdirSync(SHOTS, { recursive: true });
 
@@ -241,7 +245,7 @@ async function verifyUi() {
   const errors = [];
 
   const browser = await puppeteer.launch({
-    executablePath: "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+    executablePath: CHROME_PATH,
     headless: "new",
     args: ["--no-sandbox", "--disable-gpu", "--window-size=1600,900"],
     protocolTimeout: 60000,
@@ -635,7 +639,7 @@ async function verifyShare() {
   console.log("4) 分享链接回放页面（?session=<id>）");
   const puppeteer = (await import("puppeteer-core")).default;
   const browser = await puppeteer.launch({
-    executablePath: "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+    executablePath: CHROME_PATH,
     headless: "new",
     args: ["--no-sandbox", "--disable-gpu", "--window-size=1600,900"],
     protocolTimeout: 60000,
