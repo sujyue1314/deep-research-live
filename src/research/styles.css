@@ -198,6 +198,30 @@ body {
   min-width: 0;
 }
 
+/* iter-24：901–1080px 区间修刊号线内部折行——
+   合并单行需要 masthead(151) + gap(22) + 刊号线内容(hstats 532 + gap 22 + 操作组 279
+   ≈ 833) + 双侧 --edge，合计 ≥1078px 才放得下。低于此宽度时刊号线（继承基础层
+   的 flex-wrap:wrap）内部折行：stats 留在第一行贴顶、操作组掉第二行，头部带被
+   撑高且底部大段空白。此区间改为 masthead 独占一行、刊号线独立一行，
+   stats 与操作组同行垂直居中；≥1081px 保留合并单行（iter-23），≤900px 移动堆叠不受影响 */
+@media (max-width: 1080px) {
+  .rb-compact .rb-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+  .rb-compact .rb-masthead {
+    padding: 0;
+  }
+  .rb-compact .rb-dateline {
+    flex: none;
+    min-width: 0;
+    /* 901px 刀锋：stats(532)+gap(22)+操作组(279)=833 vs 可用 829，差 4px 会内部折行；
+       收紧列间隙补上，全区间单行放得下 */
+    gap: 14px;
+  }
+}
+
 /* 议题导语收紧一档 */
 .rb-compact .rb-standfirst-bar {
   padding: 12px var(--edge);

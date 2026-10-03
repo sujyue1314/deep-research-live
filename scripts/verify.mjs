@@ -454,6 +454,25 @@ async function verifyUi() {
     };
   });
   log("   压缩刊首:", JSON.stringify(chromeH));
+  // iter-24：中宽视口（901–1080px）刊号线不得内部折行——
+  // stats 与操作组须在同一行内垂直居中（回归 bug：1024px 时 stats 贴顶、actions 掉第二行）
+  await page.setViewport({ width: 1024, height: 700 });
+  await sleep(600);
+  const midW = await page.evaluate(() => {
+    const hs = document.querySelector(".rb-hstats")?.getBoundingClientRect();
+    const dl = document.querySelector(".rb-dateline")?.getBoundingClientRect();
+    if (!hs || !dl) return null;
+    return {
+      statsTopInDl: Math.round(hs.top - dl.top),
+      statsBotInDl: Math.round(dl.bottom - hs.bottom),
+      dlH: Math.round(dl.height),
+      headerH: Math.round(document.querySelector(".rb-header").getBoundingClientRect().height),
+      docOverflow: document.documentElement.scrollWidth > window.innerWidth + 1,
+    };
+  });
+  log("   中宽刊首(1024):", JSON.stringify(midW));
+  await page.setViewport({ width: 1600, height: 900 });
+  await sleep(400);
   await page.click(".rb-stage-switch .ib-seg:last-of-type").catch(() => {});
   await sleep(500);
   const processGear = await page.evaluate(() => {
@@ -504,6 +523,10 @@ async function verifyUi() {
   ok(
     chromeH.compact && chromeH.gridTop < 170,
     `非 idle 刊首压缩（顶部 ${chromeH.gridTop}px < 170，iter-23）`,
+  );
+  ok(
+    !!midW && Math.abs(midW.statsTopInDl - midW.statsBotInDl) <= 4 && !midW.docOverflow,
+    `中宽视口刊号线居中不折行（上 ${midW?.statsTopInDl}/下 ${midW?.statsBotInDl}，iter-24）`,
   );
   ok(
     !!trunc && /[。！？）】”]/.test(trunc?.tail?.slice(-1) || ""),
