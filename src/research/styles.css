@@ -155,6 +155,59 @@ body {
   letter-spacing: 0.6px;
 }
 
+/* ---------- iter-23：非 idle 自适应压缩刊首 ----------
+   idle 保留完整杂志封面；running/done/error 时 masthead 与刊号线
+   合并成一行页眉（flex row），议题导语同步收紧。
+   固定区 306 → 约 115px，768p 视口栏区 +190px */
+.rb-compact .rb-header {
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px 22px;
+  padding: 10px var(--edge) 9px;
+}
+
+.rb-compact .rb-masthead {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.rb-compact .rb-kicker {
+  letter-spacing: 4px;
+}
+
+.rb-compact .rb-title {
+  margin: 0;
+  font-size: 24px;
+  letter-spacing: 3px;
+}
+
+.rb-compact .rb-sub {
+  display: none;
+}
+
+/* 刊号线并进页眉行：去掉自身双发丝线与外边距，由 header border-bottom 统一收边 */
+.rb-compact .rb-dateline {
+  margin: 0;
+  border: none;
+  padding: 0;
+  flex: 1;
+  min-width: 0;
+}
+
+/* 议题导语收紧一档 */
+.rb-compact .rb-standfirst-bar {
+  padding: 12px var(--edge);
+}
+
+.rb-compact .sf-text {
+  font-size: 18px;
+  margin-top: 4px;
+}
+
 .rb-dot {
   width: 7px;
   height: 7px;

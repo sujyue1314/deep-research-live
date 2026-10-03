@@ -113,6 +113,9 @@ export default function App() {
   const stageable =
     (phase === "done" || phase === "error") && (sections.length > 0 || !!oneLine);
   const stageClass = stageable && stageView === "report" ? " rb-grid-stage-report" : "";
+  // iter-23：非 idle 收起刊首——idle 保留完整杂志封面（下方本就是空面板），
+  // 直播/阅读/回放态压缩顶部固定区，把纵向空间还给三栏与公报
+  const compact = phase !== "idle";
 
   const stepRef = useRef(0);
   const voiceRef = useRef<Voice>("investigator");
@@ -494,7 +497,7 @@ export default function App() {
   };
 
   return (
-    <div className="rb-screen">
+    <div className={compact ? "rb-screen rb-compact" : "rb-screen"}>
       <Header
         phase={phase}
         elapsed={elapsed}

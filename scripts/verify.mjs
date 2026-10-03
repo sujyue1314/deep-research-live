@@ -444,6 +444,16 @@ async function verifyUi() {
     noForm: !document.querySelector(".ib-presets"),
   }));
   log("   standfirst:", JSON.stringify(sf));
+  // iter-23：非 idle 刊首压缩——顶部固定区应 < 170px（压缩前 306px）
+  const chromeH = await page.evaluate(() => {
+    const g = document.querySelector(".rb-grid").getBoundingClientRect();
+    return {
+      gridTop: Math.round(g.top),
+      gridH: Math.round(g.height),
+      compact: document.querySelector(".rb-screen")?.classList.contains("rb-compact") ?? false,
+    };
+  });
+  log("   压缩刊首:", JSON.stringify(chromeH));
   await page.click(".rb-stage-switch .ib-seg:last-of-type").catch(() => {});
   await sleep(500);
   const processGear = await page.evaluate(() => {
@@ -490,6 +500,10 @@ async function verifyUi() {
   ok(
     !!sf.text && sf.noForm && sf.actions.includes("换个问题重来") && sf.actions.includes("清空"),
     `完稿态输入区退化为议题导语（iter-22）`,
+  );
+  ok(
+    chromeH.compact && chromeH.gridTop < 170,
+    `非 idle 刊首压缩（顶部 ${chromeH.gridTop}px < 170，iter-23）`,
   );
   ok(
     !!trunc && /[。！？）】”]/.test(trunc?.tail?.slice(-1) || ""),
